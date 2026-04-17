@@ -4,945 +4,576 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="theme-color" content="#0a3d6b">
-<title>Encargado – Distribución de Rutas</title>
+<title>Encargado – Villar Agua</title>
 <style>
 :root {
-  --azul:    #0a3d6b;
-  --azul2:   #1565c0;
-  --celeste: #dbeafe;
-  --verde:   #166534;
-  --verde-bg:#dcfce7;
-  --rojo:    #991b1b;
-  --rojo-bg: #fee2e2;
-  --ambar:   #92400e;
-  --ambar-bg:#fef3c7;
-  --gris:    #f8fafc;
-  --gris2:   #e2e8f0;
-  --texto:   #1e293b;
-  --muted:   #64748b;
-  --borde:   #cbd5e1;
-  --blanco:  #ffffff;
-  --sombra:  0 1px 4px rgba(0,0,0,.1);
+  --azul:#0a3d6b;--azul2:#1565c0;--celeste:#dbeafe;
+  --verde:#166534;--verde-bg:#dcfce7;
+  --rojo:#991b1b;--rojo-bg:#fee2e2;
+  --ambar:#92400e;--ambar-bg:#fef3c7;
+  --gris:#f8fafc;--gris2:#e2e8f0;
+  --texto:#1e293b;--muted:#64748b;--borde:#cbd5e1;--blanco:#ffffff;--radio:12px;
 }
-* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
-html, body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #e8f0fe; color: var(--texto); min-height: 100vh; font-size: 15px; }
-
-/* ── TOPBAR ── */
-.topbar { background: var(--azul); color: white; padding: 12px 16px; position: sticky; top:0; z-index:200; display:flex; align-items:center; justify-content:space-between; gap:10px; }
-.topbar-left { display:flex; align-items:center; gap:10px; }
-.topbar-title { font-size:17px; font-weight:700; }
-.topbar-sub   { font-size:11px; opacity:.7; }
-.topbar-date  { font-size:12px; opacity:.85; white-space:nowrap; }
-
-/* ── TABS ── */
-.tabs { background: var(--azul); display:flex; border-top:1px solid rgba(255,255,255,.15); }
-.tab { flex:1; padding:10px 4px; text-align:center; font-size:13px; font-weight:600; color:rgba(255,255,255,.6); cursor:pointer; border-bottom:3px solid transparent; transition:.15s; }
-.tab.active { color:white; border-bottom-color:white; }
-
-/* ── SCREENS ── */
-.screen { display:none; }
-.screen.active { display:block; }
-
-/* ── CARDS ── */
-.card { background:var(--blanco); border-radius:12px; box-shadow:var(--sombra); margin:10px 12px; padding:14px; }
-.card-title { font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:.8px; color:var(--muted); margin-bottom:10px; }
-
-/* ── STAT PILLS ── */
-.stats-row { display:grid; grid-template-columns:repeat(4,1fr); gap:6px; margin:10px 12px 4px; }
-.stat { background:var(--blanco); border-radius:10px; padding:8px 6px; text-align:center; box-shadow:var(--sombra); }
-.stat-v { font-size:19px; font-weight:700; color:var(--azul); }
-.stat-l { font-size:10px; color:var(--muted); margin-top:1px; }
-
-/* ── ALERT BANNER ── */
-.alert { margin:6px 12px; padding:10px 14px; border-radius:10px; font-size:13px; font-weight:600; display:none; }
-.alert.warn  { background:var(--ambar-bg); color:var(--ambar); }
-.alert.error { background:var(--rojo-bg);  color:var(--rojo); }
-.alert.ok    { background:var(--verde-bg); color:var(--verde); }
-
-/* ── PREVENTA SUBMISSIONS ── */
-.prev-card {
-  background:var(--blanco); border-radius:12px; box-shadow:var(--sombra);
-  margin:8px 12px; overflow:hidden; border-left:4px solid var(--borde);
-}
-.prev-card.enviado  { border-left-color: var(--verde); }
-.prev-card.pendiente{ border-left-color: var(--ambar); }
-.prev-header {
-  padding:10px 14px; display:flex; align-items:center; justify-content:space-between;
-  cursor:pointer; gap:8px;
-}
-.prev-name  { font-size:15px; font-weight:700; }
-.prev-meta  { font-size:12px; color:var(--muted); margin-top:2px; }
-.prev-badge {
-  font-size:11px; font-weight:700; padding:3px 9px; border-radius:20px;
-  white-space:nowrap; flex-shrink:0;
-}
-.badge-ok    { background:var(--verde-bg); color:var(--verde); }
-.badge-warn  { background:var(--ambar-bg); color:var(--ambar); }
-.badge-none  { background:var(--gris2); color:var(--muted); }
-.prev-body   { padding:0 14px 12px; display:none; }
-.prev-body.open { display:block; }
-
-/* ── CLIENTES LIST ── */
-.cliente-row {
-  display:flex; align-items:center; gap:8px;
-  padding:7px 0; border-bottom:1px solid var(--gris2);
-}
-.cliente-row:last-child { border-bottom:none; }
-.cliente-drag {
-  color:var(--borde); font-size:20px; cursor:grab; flex-shrink:0;
-  user-select:none; -webkit-user-select:none;
-}
-.cliente-info { flex:1; }
-.cliente-name { font-size:14px; font-weight:600; }
-.cliente-detail{ font-size:12px; color:var(--muted); margin-top:1px; }
-.cliente-tags { display:flex; gap:4px; flex-wrap:wrap; margin-top:3px; }
-.tag { display:inline-block; font-size:10px; font-weight:700; padding:2px 7px; border-radius:20px; }
-.tag-v    { background:#dbeafe; color:#1e40af; }
-.tag-p    { background:#fef3c7; color:#92400e; }
-.tag-cred { background:var(--verde-bg); color:var(--verde); }
-.tag-ncf  { background:#ede9fe; color:#4c1d95; }
-.tag-total{ background:var(--gris2); color:var(--texto); }
-.cliente-assign {
-  font-size:12px; padding:5px 8px; border:1.5px solid var(--borde);
-  border-radius:8px; background:var(--gris); color:var(--texto);
-  appearance:none; -webkit-appearance:none; min-width:90px;
-  outline:none; cursor:pointer;
-}
-.cliente-assign.assigned { border-color:var(--azul2); background:var(--celeste); color:var(--azul); font-weight:600; }
-
-/* ── CAMIONES ── */
-.camion-card {
-  background:var(--blanco); border-radius:12px; box-shadow:var(--sombra);
-  margin:8px 12px; overflow:hidden;
-}
-.camion-header {
-  background:var(--azul); color:white;
-  padding:12px 14px; display:flex; align-items:center; justify-content:space-between;
-  cursor:pointer;
-}
-.camion-name { font-size:16px; font-weight:700; }
-.camion-meta { font-size:11px; opacity:.75; margin-top:2px; }
-.camion-stats{ display:flex; gap:8px; align-items:center; flex-shrink:0; }
-.camion-stat-pill {
-  background:rgba(255,255,255,.2); color:white;
-  font-size:12px; font-weight:700; padding:3px 9px; border-radius:20px;
-}
-.camion-body { padding:0 14px 14px; display:none; }
-.camion-body.open { display:block; }
-.camion-zonas { padding:8px 0 6px; font-size:12px; color:var(--muted); }
-.camion-cliente-row {
-  display:flex; align-items:center; gap:8px;
-  padding:7px 0; border-bottom:1px solid var(--gris2);
-}
-.camion-cliente-row:last-child { border-bottom:none; }
-.camion-cliente-name { flex:1; font-size:14px; font-weight:600; }
-.camion-cliente-detail { font-size:12px; color:var(--muted); }
-.btn-quitar {
-  background:none; border:none; color:var(--borde); font-size:18px;
-  cursor:pointer; padding:2px 6px; flex-shrink:0;
-}
-.btn-quitar:hover { color:var(--rojo); }
-
-.camion-empty { text-align:center; padding:20px; color:var(--muted); font-size:13px; }
-
-/* ── FAB ACTUALIZAR ── */
-.fab {
-  position:fixed; bottom:20px; right:16px; z-index:300;
-  background:var(--azul2); color:white;
-  width:54px; height:54px; border-radius:50%;
-  border:none; font-size:22px; cursor:pointer;
-  box-shadow:0 4px 12px rgba(0,0,0,.25);
-  display:flex; align-items:center; justify-content:center;
-  transition:transform .15s;
-}
-.fab:active { transform:scale(.92); }
-.fab.spinning { animation: spin .7s linear infinite; }
-@keyframes spin { to { transform:rotate(360deg); } }
-
-/* ── GENERAR RESUMEN ── */
-.btn-main {
-  display:block; width:calc(100% - 24px); margin:6px 12px;
-  padding:14px; border:none; border-radius:12px;
-  font-size:16px; font-weight:700; cursor:pointer;
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#e8f0fe;color:var(--texto);min-height:100vh;font-size:15px}
+.topbar{background:var(--azul);color:white;padding:12px 16px;position:sticky;top:0;z-index:200;display:flex;align-items:center;justify-content:space-between}
+.topbar-title{font-size:17px;font-weight:700}
+.topbar-sub{font-size:11px;opacity:.7;margin-top:1px}
+.tabs{background:var(--azul);display:flex;border-top:1px solid rgba(255,255,255,.15);position:sticky;top:56px;z-index:199}
+.tab{flex:1;padding:11px 4px;text-align:center;font-size:13px;font-weight:600;color:rgba(255,255,255,.55);cursor:pointer;border-bottom:3px solid transparent;transition:.15s}
+.tab.active{color:white;border-bottom-color:white}
+.screen{display:none;padding-bottom:80px}
+.screen.active{display:block}
+.card{background:var(--blanco);border-radius:var(--radio);box-shadow:0 1px 4px rgba(0,0,0,.1);margin:10px 12px;padding:14px}
+.card-title{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--muted);margin-bottom:10px}
+.stats-row{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin:10px 12px 6px}
+.stat{background:var(--blanco);border-radius:10px;padding:8px 4px;text-align:center;box-shadow:0 1px 3px rgba(0,0,0,.08)}
+.stat-v{font-size:20px;font-weight:700;color:var(--azul)}
+.stat-l{font-size:10px;color:var(--muted);margin-top:1px}
+.alert{margin:0 12px 6px;padding:10px 14px;border-radius:10px;font-size:13px;font-weight:600}
+.alert.warn{background:var(--ambar-bg);color:var(--ambar)}
+.alert.ok{background:var(--verde-bg);color:var(--verde)}
+.sec-label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--muted);padding:10px 12px 4px}
+/* Preventa blocks */
+.prev-block{background:var(--blanco);border-radius:var(--radio);box-shadow:0 1px 4px rgba(0,0,0,.1);margin:8px 12px;overflow:hidden}
+.prev-head{padding:12px 14px;display:flex;align-items:center;gap:10px;cursor:pointer;border-bottom:1px solid var(--gris2)}
+.prev-head-info{flex:1;min-width:0}
+.prev-head-name{font-size:15px;font-weight:700}
+.prev-head-meta{font-size:12px;color:var(--muted);margin-top:2px}
+.prev-chevron{font-size:18px;color:var(--muted);transition:transform .2s;flex-shrink:0}
+.prev-chevron.open{transform:rotate(90deg)}
+.prev-body{display:none;padding:0 12px 12px}
+.prev-body.open{display:block}
+/* Assign-all truck buttons */
+.truck-bar{display:flex;gap:7px;padding:10px 0 8px;overflow-x:auto;-webkit-overflow-scrolling:touch}
+.truck-bar::-webkit-scrollbar{display:none}
+.truck-btn{
+  flex-shrink:0;min-width:72px;padding:10px 8px;border:none;border-radius:10px;
+  background:var(--azul);color:white;font-size:12px;font-weight:700;cursor:pointer;
+  display:flex;flex-direction:column;align-items:center;gap:3px;
   transition:transform .1s;
 }
-.btn-main:active { transform:scale(.97); }
-.btn-green { background:#25D366; color:white; }
-.btn-blue  { background:var(--azul); color:white; }
-.btn-azul2 { background:var(--azul2); color:white; }
-
-/* ── RESUMEN BOX ── */
-.resumen-box {
-  background:var(--gris); border:1px solid var(--borde); border-radius:10px;
-  padding:12px; font-size:13px; font-family:'Courier New',monospace;
-  white-space:pre-wrap; word-break:break-word; max-height:45vh; overflow-y:auto;
-}
-
-/* ── MODAL ── */
-.modal-bg {
-  display:none; position:fixed; inset:0; background:rgba(0,0,0,.5); z-index:400;
-  align-items:flex-end; justify-content:center;
-}
-.modal-bg.open { display:flex; }
-.modal {
-  background:white; border-radius:16px 16px 0 0;
-  padding:20px; width:100%; max-height:70vh; overflow-y:auto;
-}
-.modal-title { font-size:16px; font-weight:700; margin-bottom:14px; }
-.modal-option {
-  padding:12px 14px; border-radius:10px; margin-bottom:8px;
-  border:2px solid var(--borde); font-size:15px; font-weight:600;
-  cursor:pointer; transition:.15s; display:flex; justify-content:space-between;
-}
-.modal-option:hover, .modal-option.sel { border-color:var(--azul2); background:var(--celeste); color:var(--azul); }
-.modal-cancel { text-align:center; padding:12px; color:var(--muted); font-size:14px; cursor:pointer; margin-top:4px; }
-
-/* ── TOAST ── */
-.toast {
-  position:fixed; bottom:88px; left:50%; transform:translateX(-50%) translateY(80px);
-  background:#1e293b; color:white; padding:10px 20px; border-radius:30px;
-  font-size:13px; font-weight:600; transition:transform .3s; z-index:500; white-space:nowrap;
-}
-.toast.show { transform:translateX(-50%) translateY(0); }
-
-/* ── LOADING ── */
-.loading { text-align:center; padding:40px 20px; color:var(--muted); }
-.loading-spin { font-size:32px; animation:spin .8s linear infinite; display:block; margin-bottom:12px; }
-
-input[type="text"], input[type="number"], select {
-  width:100%; font-size:16px; padding:10px 12px;
-  border:1.5px solid var(--borde); border-radius:10px;
-  background:var(--gris); color:var(--texto); appearance:none; -webkit-appearance:none; outline:none;
-}
-input:focus, select:focus { border-color:var(--azul2); background:white; }
-
-.section-label {
-  font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.8px;
-  color:var(--muted); padding:12px 12px 4px;
-}
-
-/* ── CAPACITY BAR ── */
-.cap-wrap { margin-top:8px; }
-.cap-bar-bg { background:var(--gris2); border-radius:20px; height:8px; overflow:hidden; margin:4px 0; }
-.cap-bar-fill { height:100%; border-radius:20px; transition:width .4s; }
-.cap-ok   { background:#22c55e; }
-.cap-warn { background:#f59e0b; }
-.cap-over { background:#ef4444; }
-.cap-label { font-size:11px; color:var(--muted); display:flex; justify-content:space-between; }
-.cap-label .over { color:var(--rojo); font-weight:700; }
+.truck-btn:active{transform:scale(.93)}
+.truck-btn .ticon{font-size:22px}
+.truck-btn .tname{font-size:11px;opacity:.9;max-width:68px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.truck-btn .tcap{font-size:10px;opacity:.8}
+/* Client rows */
+.cli-row{display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--gris2);cursor:pointer}
+.cli-row:last-child{border-bottom:none}
+.cli-check{width:22px;height:22px;border-radius:50%;border:2px solid var(--borde);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:12px;transition:.15s}
+.cli-row.has-asig .cli-check{background:var(--azul2);border-color:var(--azul2);color:white}
+.cli-info{flex:1;min-width:0}
+.cli-name{font-size:14px;font-weight:600}
+.cli-tags{display:flex;gap:3px;flex-wrap:wrap;margin-top:2px}
+.tag{display:inline-block;font-size:10px;font-weight:700;padding:2px 6px;border-radius:20px}
+.tag-v{background:#dbeafe;color:#1e40af}
+.tag-p{background:#fef3c7;color:#92400e}
+.tag-cred{background:var(--verde-bg);color:var(--verde)}
+.tag-ncf{background:#ede9fe;color:#4c1d95}
+.asig-lbl{font-size:11px;font-weight:700;padding:3px 8px;border-radius:20px;flex-shrink:0;white-space:nowrap}
+.asig-lbl.ok{background:var(--verde-bg);color:var(--verde)}
+.asig-lbl.no{background:var(--gris2);color:var(--muted)}
+/* Camiones tab */
+.camion-card{background:var(--blanco);border-radius:var(--radio);box-shadow:0 1px 4px rgba(0,0,0,.1);margin:8px 12px;overflow:hidden}
+.cam-head{padding:12px 14px;display:flex;align-items:center;gap:10px;cursor:pointer}
+.cam-head-info{flex:1;min-width:0}
+.cam-name{font-size:15px;font-weight:700;color:var(--azul);display:flex;align-items:center;gap:6px}
+.cam-chofer{font-size:12px;color:var(--muted);margin-top:2px}
+.cam-pills{display:flex;gap:5px;align-items:center;flex-shrink:0}
+.pill{font-size:12px;font-weight:700;padding:4px 9px;border-radius:20px;background:var(--celeste);color:var(--azul)}
+.pill.over{background:var(--rojo-bg);color:var(--rojo)}
+.pill.warn{background:var(--ambar-bg);color:var(--ambar)}
+.cam-body{display:none;border-top:1px solid var(--gris2);padding:12px 14px}
+.cam-body.open{display:block}
+.cap-bar-bg{background:var(--gris2);border-radius:20px;height:8px;overflow:hidden;margin:6px 0 3px}
+.cap-bar-fill{height:100%;border-radius:20px;transition:width .4s}
+.cap-ok{background:#22c55e}.cap-warn{background:#f59e0b}.cap-over{background:#ef4444}
+.cap-text{display:flex;justify-content:space-between;font-size:11px;color:var(--muted)}
+.cap-over-txt{color:var(--rojo);font-weight:700}
+.cam-cfg{display:grid;gap:6px;margin-top:10px}
+.cam-cli{display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--gris2)}
+.cam-cli:last-child{border-bottom:none}
+.cam-cli-info{flex:1;min-width:0}
+.cam-cli-name{font-size:13px;font-weight:600}
+.cam-cli-det{font-size:11px;color:var(--muted)}
+.btn-x{background:none;border:none;color:var(--borde);font-size:20px;cursor:pointer;padding:2px 6px;flex-shrink:0}
+.btn-x:active{color:var(--rojo)}
+.cam-empty{text-align:center;padding:14px 0;font-size:13px;color:var(--muted)}
+/* Resumen */
+.resumen-box{background:var(--gris);border:1px solid var(--borde);border-radius:10px;padding:12px;font-size:13px;font-family:'Courier New',monospace;white-space:pre-wrap;word-break:break-word;max-height:38vh;overflow-y:auto;margin-bottom:8px}
+/* Buttons */
+.btn{display:block;width:calc(100% - 24px);margin:6px 12px;padding:14px;border:none;border-radius:var(--radio);font-size:16px;font-weight:700;cursor:pointer;transition:transform .1s}
+.btn:active{transform:scale(.97)}
+.btn-blue{background:var(--azul);color:white}
+.btn-azul2{background:var(--azul2);color:white}
+.btn-green{background:#25D366;color:white}
+.btn-sky{background:#0ea5e9;color:white}
+.btn-sm{font-size:13px;padding:8px 14px;border:none;border-radius:8px;cursor:pointer;font-weight:600;width:100%}
+/* Modal */
+.modal-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:400;align-items:flex-end;justify-content:center}
+.modal-bg.open{display:flex}
+.modal{background:white;border-radius:18px 18px 0 0;padding:20px 16px;width:100%;max-height:82vh;overflow-y:auto}
+.modal-title{font-size:16px;font-weight:700;margin-bottom:4px}
+.modal-sub{font-size:13px;color:var(--muted);margin-bottom:14px}
+.mcam-btn{width:100%;padding:13px 16px;border:2px solid var(--borde);border-radius:12px;margin-bottom:8px;background:white;text-align:left;cursor:pointer;display:flex;align-items:center;gap:12px;transition:.15s}
+.mcam-btn:active,.mcam-btn.sel{border-color:var(--azul2);background:var(--celeste)}
+.mcam-icon{font-size:24px;flex-shrink:0}
+.mcam-info{flex:1;min-width:0}
+.mcam-name{font-size:15px;font-weight:700;color:var(--azul)}
+.mcam-det{font-size:12px;color:var(--muted);margin-top:1px}
+.modal-cancel{text-align:center;padding:14px;color:var(--muted);font-size:14px;cursor:pointer}
+/* Toast */
+.toast{position:fixed;bottom:88px;left:50%;transform:translateX(-50%) translateY(80px);background:#1e293b;color:white;padding:10px 20px;border-radius:30px;font-size:13px;font-weight:600;transition:transform .3s;z-index:500;white-space:nowrap;pointer-events:none}
+.toast.show{transform:translateX(-50%) translateY(0)}
+input[type="text"],input[type="number"],select{width:100%;font-size:15px;padding:10px 12px;border:1.5px solid var(--borde);border-radius:10px;background:var(--gris);color:var(--texto);appearance:none;-webkit-appearance:none;outline:none}
+input:focus,select:focus{border-color:var(--azul2);background:white}
 </style>
 </head>
 <body>
 
-<!-- TOPBAR -->
 <div class="topbar">
-  <div class="topbar-left">
-    <div>
-      <div class="topbar-title">Distribución de Rutas</div>
-      <div class="topbar-sub">Villar Agua – Encargado</div>
-    </div>
-  </div>
-  <div class="topbar-date" id="top-fecha">—</div>
+  <div><div class="topbar-title">Distribución de Rutas</div><div class="topbar-sub" id="top-sub">Villar Agua · Encargado</div></div>
+  <button id="btn-refresh" onclick="cargarDatos()" style="background:rgba(255,255,255,.2);border:none;color:white;padding:7px 14px;border-radius:20px;font-size:13px;font-weight:600;cursor:pointer">⟳ Actualizar</button>
 </div>
 
-<!-- TABS -->
 <div class="tabs">
   <div class="tab active" onclick="switchTab('pedidos',this)">📋 Pedidos</div>
   <div class="tab" onclick="switchTab('camiones',this)">🚛 Camiones</div>
-  <div class="tab" onclick="switchTab('resumen',this)">📤 Enviar</div>
+  <div class="tab" onclick="switchTab('enviar',this)">📤 Enviar</div>
 </div>
 
-<!-- ══════════ TAB 1: PEDIDOS ══════════ -->
+<!-- TAB PEDIDOS -->
 <div class="screen active" id="screen-pedidos">
-
   <div class="stats-row">
-    <div class="stat"><div class="stat-v" id="st-preventas">0</div><div class="stat-l">Preventas</div></div>
-    <div class="stat"><div class="stat-v" id="st-clientes">0</div><div class="stat-l">Clientes</div></div>
-    <div class="stat"><div class="stat-v" id="st-cajas">0</div><div class="stat-l">Cajas</div></div>
+    <div class="stat"><div class="stat-v" id="st-prev">0</div><div class="stat-l">Preventas</div></div>
+    <div class="stat"><div class="stat-v" id="st-cli">0</div><div class="stat-l">Clientes</div></div>
+    <div class="stat"><div class="stat-v" id="st-caj">0</div><div class="stat-l">Cajas</div></div>
     <div class="stat"><div class="stat-v" id="st-sin" style="color:var(--rojo)">0</div><div class="stat-l">Sin asignar</div></div>
   </div>
+  <div id="alerta" style="display:none" class="alert"></div>
+  <div style="font-size:12px;color:var(--muted);text-align:center;padding:2px 16px 8px">Toca 🚛 para asignar toda la ruta, o un cliente para asignarlo individualmente</div>
+  <div id="prev-list"></div>
 
-  <div class="alert" id="alert-sin">
-    ⚠ Hay clientes sin camión asignado
-  </div>
-  <div class="alert ok" id="alert-ok">
-    ✓ Todos los clientes están asignados
-  </div>
-
-  <div id="prev-list">
-    <div class="loading"><span class="loading-spin">⟳</span>Cargando pedidos...</div>
-  </div>
-
-  <!-- Agregar pedido manual / tardío -->
-  <div class="section-label">Pedido tardío / manual</div>
+  <div class="sec-label">Agregar cliente / pedido tardío</div>
   <div class="card">
-    <div class="card-title">Agregar cliente extra</div>
     <div style="display:grid;gap:8px">
-      <input type="text" id="m-zona" placeholder="Zona (ej: Zona 3)">
-      <input type="text" id="m-vendedor" placeholder="Vendedor / Referencia">
-      <input type="text" id="m-cliente" placeholder="Nombre del cliente">
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
-        <input type="number" id="m-cajas" placeholder="Cajas" inputmode="numeric" min="0">
-        <input type="number" id="m-promo" placeholder="Promo" inputmode="numeric" min="0">
+        <input type="text" id="m-zona" placeholder="Zona (ej: Zona 3)">
+        <input type="text" id="m-vend" placeholder="Vendedor / Ref.">
       </div>
-      <select id="m-precio">
-        <option value="140">$140</option>
-        <option value="125">$125</option>
-        <option value="115">$115</option>
-        <option value="0">Sin precio / Promo</option>
-      </select>
+      <input type="text" id="m-cli" placeholder="Nombre del cliente">
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">
+        <input type="number" id="m-caj" placeholder="Cajas" inputmode="numeric" min="0">
+        <input type="number" id="m-pro" placeholder="Promo" inputmode="numeric" min="0">
+        <select id="m-pre"><option value="140">$140</option><option value="125">$125</option><option value="115">$115</option><option value="0">Promo</option></select>
+      </div>
     </div>
-    <button class="btn-main btn-azul2" style="margin:12px 0 0" onclick="agregarManual()">+ Agregar</button>
+    <button class="btn btn-azul2" style="margin:10px 0 0" onclick="agregarManual()">+ Agregar cliente</button>
   </div>
-  <div style="height:80px"></div>
 </div>
 
-<!-- ══════════ TAB 2: CAMIONES ══════════ -->
+<!-- TAB CAMIONES -->
 <div class="screen" id="screen-camiones">
-
-  <!-- Config camiones -->
-  <div class="card" id="config-camiones-card">
-    <div class="card-title">Camiones del día <span style="font-weight:400;text-transform:none">(toca para editar)</span></div>
-    <div id="camiones-config-list"></div>
-    <button class="btn-main btn-azul2" style="margin:10px 0 0" onclick="agregarCamion()">+ Agregar camión</button>
-  </div>
-
-  <div class="section-label">Clientes asignados por camión</div>
-  <div id="camiones-list"></div>
-  <div style="height:80px"></div>
+  <div class="sec-label">Configuración de camiones</div>
+  <div id="cam-config"></div>
+  <button class="btn btn-azul2" onclick="agregarCamion()">+ Agregar camión</button>
+  <div class="sec-label" style="margin-top:4px">Clientes por camión</div>
+  <div id="cam-detalle"></div>
 </div>
 
-<!-- ══════════ TAB 3: ENVIAR ══════════ -->
-<div class="screen" id="screen-resumen">
+<!-- TAB ENVIAR -->
+<div class="screen" id="screen-enviar">
   <div class="card">
-    <div class="card-title">Generar resumen por camión</div>
-    <div style="margin-bottom:10px">
-      <label style="font-size:13px;font-weight:600;color:var(--azul);display:block;margin-bottom:6px">Seleccionar camión</label>
-      <select id="sel-camion-resumen" onchange="generarResumenCamion()">
-        <option value="">— Todos los camiones —</option>
-      </select>
+    <div class="card-title">Resumen por camión</div>
+    <select id="sel-cam" onchange="genResumenCam()" style="margin-bottom:10px">
+      <option value="">— Seleccionar camión —</option>
+    </select>
+    <div class="resumen-box" id="res-cam">Selecciona un camión arriba.</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+      <button class="btn-sm" style="background:#25D366;color:white" onclick="copiar('res-cam')">Copiar</button>
+      <button class="btn-sm" style="background:var(--azul);color:white" onclick="abrirWA()">WhatsApp</button>
     </div>
-    <div class="resumen-box" id="resumen-output">Selecciona un camión para ver su resumen.</div>
   </div>
-
-  <button class="btn-main btn-green" onclick="copiarResumen()">Copiar para WhatsApp</button>
-  <button class="btn-main" style="background:#0ea5e9;color:white" onclick="abrirWhatsApp()">Abrir WhatsApp directo</button>
-
-  <div class="card" style="margin-top:4px">
-    <div class="card-title">Resumen general del día</div>
-    <div class="resumen-box" id="resumen-general">—</div>
+  <div class="card">
+    <div class="card-title">Resumen general</div>
+    <div class="resumen-box" id="res-gen">—</div>
+    <button class="btn-sm" style="background:var(--azul2);color:white" onclick="copiar('res-gen')">Copiar resumen general</button>
   </div>
-  <button class="btn-main btn-blue" onclick="copiarGeneral()">Copiar resumen general</button>
-  <div style="height:80px"></div>
 </div>
 
-<!-- FAB REFRESH -->
-<button class="fab" id="fab-refresh" onclick="cargarDatos()" title="Actualizar pedidos">⟳</button>
-
-<!-- MODAL asignación -->
-<div class="modal-bg" id="modal-bg" onclick="cerrarModal(event)">
+<!-- MODAL -->
+<div class="modal-bg" id="modal-bg" onclick="bgClick(event)">
   <div class="modal">
-    <div class="modal-title" id="modal-title">Asignar a camión</div>
-    <div id="modal-opciones"></div>
+    <div class="modal-title" id="modal-title"></div>
+    <div class="modal-sub"   id="modal-sub"></div>
+    <div id="modal-body"></div>
     <div class="modal-cancel" onclick="cerrarModal()">Cancelar</div>
   </div>
 </div>
 
-<!-- TOAST -->
 <div class="toast" id="toast"></div>
 
 <script>
-/* ═══════════════════════════════════════════════
-   JSONBIN CONFIG
-═══════════════════════════════════════════════ */
-const JSONBIN_KEY = '$2a$10$q4eNs6WXxS3oXb25mIeINuoiZaCd69ruJI.IZhZGcstCRL4xDOPfu';
-const JSONBIN_BIN = '69e249f336566621a8c3c97c';
-const JSONBIN_URL = 'https://api.jsonbin.io/v3/b/' + JSONBIN_BIN;
+const JKEY='$2a$10$q4eNs6WXxS3oXb25mIeINuoiZaCd69ruJI.IZhZGcstCRL4xDOPfu';
+const JBIN='69e249f336566621a8c3c97c';
+const JURL='https://api.jsonbin.io/v3/b/'+JBIN;
 
-async function leerBin() {
-  const r = await fetch(JSONBIN_URL + '/latest', {
-    headers: { 'X-Master-Key': JSONBIN_KEY }
-  });
-  if (!r.ok) throw new Error('Error leyendo: ' + r.status);
-  const j = await r.json();
-  return j.record;
+async function leerBin(){
+  const r=await fetch(JURL+'/latest',{headers:{'X-Master-Key':JKEY}});
+  if(!r.ok) throw new Error(r.status);
+  return (await r.json()).record;
+}
+async function escribirBin(d){
+  const r=await fetch(JURL,{method:'PUT',headers:{'Content-Type':'application/json','X-Master-Key':JKEY},body:JSON.stringify(d)});
+  if(!r.ok) throw new Error(r.status);
 }
 
-async function escribirBin(data) {
-  const r = await fetch(JSONBIN_URL, {
-    method: 'PUT',
-    headers: { 'Content-Type': 'application/json', 'X-Master-Key': JSONBIN_KEY },
-    body: JSON.stringify(data)
-  });
-  if (!r.ok) throw new Error('Error escribiendo: ' + r.status);
-  return r.json();
-}
+let subs={}, cams=[], asig={};
+let mSid=null, mPi=null;
 
-/* ═══════════════════════════════════════════════
-   ESTADO
-═══════════════════════════════════════════════ */
-let submissions  = {};
-let camiones     = [];
-let asignaciones = {};
-let modalContext = null;
-let binCache     = null;  // full bin record cached
-
-/* ═══════════════════════════════════════════════
-   INIT
-═══════════════════════════════════════════════ */
-window.addEventListener('DOMContentLoaded', async () => {
-  const hoy = new Date();
-  const meses = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
-  document.getElementById('top-fecha').textContent =
-    hoy.getDate()+'/'+meses[hoy.getMonth()]+'/'+hoy.getFullYear();
-  await cargarDatos();
-  renderCamionesConfig();
-  generarResumenGeneral();
+window.addEventListener('DOMContentLoaded',()=>{
+  const h=new Date();
+  const M=['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+  document.getElementById('top-sub').textContent='Villar · '+h.getDate()+'/'+M[h.getMonth()]+'/'+h.getFullYear();
+  cargarDatos();
 });
 
-/* ═══════════════════════════════════════════════
-   CARGAR DATOS (JSONBin)
-═══════════════════════════════════════════════ */
-async function cargarDatos() {
-  const fab = document.getElementById('fab-refresh');
-  fab.classList.add('spinning');
-  try {
-    binCache     = await leerBin();
-    submissions  = binCache.pedidos      || {};
-    asignaciones = binCache.asignaciones || {};
-    camiones     = (binCache.camiones && binCache.camiones.length)
-                   ? binCache.camiones : defaultCamiones();
-  } catch(e) {
-    submissions = {}; asignaciones = {};
-    camiones    = defaultCamiones();
-    showToast('Error de conexión al cargar');
-    console.error(e);
-  }
-  fab.classList.remove('spinning');
+function switchTab(name,el){
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('screen-'+name).classList.add('active');
+  if(name==='camiones'){renderCamConfig();renderCamDetalle();}
+  if(name==='enviar'){poblarSel();genResumenCam();genResumenGen();}
+}
+
+async function cargarDatos(){
+  const btn=document.getElementById('btn-refresh');
+  btn.textContent='⟳ ...';
+  try{
+    const bin=await leerBin();
+    subs=bin.pedidos||{};
+    asig=bin.asignaciones||{};
+    cams=(bin.camiones&&bin.camiones.length)?bin.camiones:defaultCams();
+  }catch(e){showToast('Error de conexión');console.error(e);if(!cams.length)cams=defaultCams();}
+  btn.textContent='⟳ Actualizar';
   renderPedidos();
   actualizarStats();
 }
 
-/* ═══════════════════════════════════════════════
-   GUARDAR TODO (una sola escritura al bin)
-═══════════════════════════════════════════════ */
-async function guardarBin() {
-  binCache = { pedidos: submissions, asignaciones, camiones };
-  await escribirBin(binCache);
+async function guardar(){
+  try{await escribirBin({pedidos:subs,asignaciones:asig,camiones:cams});}
+  catch(e){showToast('Error al guardar');console.error(e);}
 }
 
-/* ═══════════════════════════════════════════════
-   CARGAR / GUARDAR CAMIONES
-═══════════════════════════════════════════════ */
-async function cargarCamiones() { /* handled in cargarDatos */ }
-
-function defaultCamiones() {
-  return [1,2,3,4,5,6].map(n => ({
-    id:'c'+n, nombre:'Camión '+n, chofer:'Chofer '+n, zonas:'', capacidad:0
-  }));
+function defaultCams(){
+  return[1,2,3,4,5,6].map(n=>({id:'c'+n,nombre:'Camión '+n,chofer:'Chofer '+n,capacidad:0}));
 }
 
-async function guardarCamiones() { await guardarBin(); }
-async function guardarAsignaciones() { await guardarBin(); }
+function cargaCam(cid){
+  let t=0;
+  Object.keys(subs).forEach(sid=>{subs[sid].pedidos.forEach((p,i)=>{if(asig[sid+'__'+i]===cid)t+=p.cajas+p.promo;});});
+  return t;
+}
 
-/* ═══════════════════════════════════════════════
-   RENDER PEDIDOS (Tab 1)
-═══════════════════════════════════════════════ */
-function renderPedidos() {
-  const cont = document.getElementById('prev-list');
-  const ids  = Object.keys(submissions);
-
-  if (ids.length === 0) {
-    cont.innerHTML = '<div class="loading" style="padding:30px 20px">No hay pedidos enviados aún.<br><span style="font-size:13px">Los preventas deben presionar<br><strong>Enviar pedido al encargado</strong></span></div>';
+/* ── RENDER PEDIDOS ── */
+function renderPedidos(){
+  const cont=document.getElementById('prev-list');
+  const ids=Object.keys(subs);
+  if(!ids.length){
+    cont.innerHTML='<div style="text-align:center;padding:40px 20px;color:var(--muted);font-size:14px">No hay pedidos aún.<br><br>Los preventas deben presionar<br><strong>"Enviar pedido al encargado"</strong></div>';
     return;
   }
+  cont.innerHTML=ids.map(sid=>{
+    const s=subs[sid];
+    const asigC=s.pedidos.filter((_,i)=>asig[sid+'__'+i]).length;
+    const pct=s.pedidos.length?Math.round(asigC/s.pedidos.length*100):0;
+    const statusColor=pct===100?'var(--verde)':asigC?'var(--ambar)':'var(--rojo)';
+    const statusTxt=pct===100?'✓ Completo':asigC?`${asigC}/${s.pedidos.length}`:'Sin asignar';
 
-  cont.innerHTML = ids.map(sid => {
-    const s = submissions[sid];
-    const clientesHTML = s.pedidos.map((p, pi) => {
-      const key = sid+'__'+pi;
-      const camAsig = asignaciones[key];
-      const cam = camiones.find(c => c.id === camAsig);
-      const isAsig = !!cam;
-      return `<div class="cliente-row">
-        <span class="cliente-drag" onclick="abrirModal('${sid}',${pi})">⋮⋮</span>
-        <div class="cliente-info">
-          <div class="cliente-name">${esc(p.cliente)}</div>
-          <div class="cliente-tags">
+    // Truck buttons
+    const trucks=cams.map(cam=>{
+      const load=cargaCam(cam.id);
+      const cap=cam.capacidad||0;
+      const pctCap=cap?Math.min(Math.round(load/cap*100),100):null;
+      const bg=!cap?'var(--azul)':pctCap<80?'#166534':pctCap<100?'#78350f':'#7f1d1d';
+      return`<button class="truck-btn" style="background:${bg}" onclick="asignarTodos('${sid}','${cam.id}')">
+        <span class="ticon">🚛</span>
+        <span class="tname">${esc(cam.nombre)}</span>
+        ${cap?`<span class="tcap">${load}/${cap}cj</span>`:`<span class="tcap">${load}cj</span>`}
+      </button>`;
+    }).join('');
+
+    // Client rows
+    const rows=s.pedidos.map((p,i)=>{
+      const cid=asig[sid+'__'+i];
+      const cam=cams.find(c=>c.id===cid);
+      return`<div class="cli-row${cam?' has-asig':''}" onclick="abrirModal('${sid}',${i})">
+        <div class="cli-check">${cam?'✓':''}</div>
+        <div class="cli-info">
+          <div class="cli-name">${esc(p.cliente)}</div>
+          <div class="cli-tags">
             <span class="tag tag-v">V:${p.cajas}</span>
-            ${p.promo ? `<span class="tag tag-p">P:${p.promo}</span>` : ''}
-            <span class="tag tag-total">$${fmt(p.total)}</span>
-            ${p.credito ? '<span class="tag tag-cred">CRÉDITO</span>' : ''}
-            ${p.ncf ? '<span class="tag tag-ncf">NCF</span>' : ''}
+            ${p.promo?`<span class="tag tag-p">P:${p.promo}</span>`:''}
+            ${p.credito?'<span class="tag tag-cred">Crédito</span>':''}
+            ${p.ncf?'<span class="tag tag-ncf">NCF</span>':''}
           </div>
         </div>
-        <select class="cliente-assign${isAsig?' assigned':''}"
-          onchange="asignarDesdeSelect('${sid}',${pi},this)"
-          data-key="${key}">
-          <option value="">Sin asignar</option>
-          ${camiones.map(c=>`<option value="${c.id}"${c.id===camAsig?' selected':''}>${c.nombre}</option>`).join('')}
-        </select>
+        <span class="asig-lbl ${cam?'ok':'no'}">${cam?esc(cam.nombre):'Sin asignar'}</span>
       </div>`;
     }).join('');
 
-    const totalAsig = s.pedidos.filter((_,pi) => asignaciones[sid+'__'+pi]).length;
-    const pct = s.pedidos.length > 0 ? Math.round(totalAsig/s.pedidos.length*100) : 0;
-    const badgeClass = pct===100 ? 'badge-ok' : pct===0 ? 'badge-none' : 'badge-warn';
-    const badgeText  = pct===100 ? 'Asignado' : pct===0 ? 'Sin asignar' : `${totalAsig}/${s.pedidos.length}`;
-    const cardClass  = pct===100 ? 'enviado' : 'pendiente';
-
-    const hora = s.enviado ? new Date(s.enviado).toLocaleTimeString('es-DO',{hour:'2-digit',minute:'2-digit'}) : '';
-
-    return `<div class="prev-card ${cardClass}" id="pc-${sid}">
-      <div class="prev-header" onclick="togglePrev('${sid}')">
-        <div>
-          <div class="prev-name">${esc(s.vendedor)} — ${esc(s.zona)}</div>
-          <div class="prev-meta">${s.pedidos.length} clientes · ${s.totalCajas}cj+${s.totalPromo}P · $${fmt(s.totalDinero)}${hora?' · '+hora:''}</div>
+    return`<div class="prev-block">
+      <div class="prev-head" onclick="togglePrev('pbody-${sid}','pchev-${sid}')">
+        <div class="prev-head-info">
+          <div class="prev-head-name">${esc(s.vendedor)} — ${esc(s.zona)}</div>
+          <div class="prev-head-meta">${s.pedidos.length} clientes · ${s.totalCajas}V+${s.totalPromo}P · $${fmt(s.totalDinero)}</div>
         </div>
-        <span class="prev-badge ${badgeClass}">${badgeText}</span>
+        <span style="font-size:12px;font-weight:700;color:${statusColor};flex-shrink:0">${statusTxt}</span>
+        <span class="prev-chevron" id="pchev-${sid}">›</span>
       </div>
-      <div class="prev-body" id="pb-${sid}">
-        <div style="display:flex;justify-content:flex-end;margin-bottom:6px">
-          <button onclick="asignarTodos('${sid}')" style="font-size:12px;padding:5px 10px;border:1.5px solid var(--azul2);border-radius:8px;background:var(--celeste);color:var(--azul);font-weight:600;cursor:pointer">
-            Asignar todos →
-          </button>
-        </div>
-        ${clientesHTML}
+      <div class="prev-body" id="pbody-${sid}">
+        <div style="font-size:11px;color:var(--muted);padding:8px 0 2px;font-weight:600">Asignar toda la ruta a un camión:</div>
+        <div class="truck-bar">${trucks}</div>
+        <div style="font-size:11px;color:var(--muted);padding:4px 0 4px;font-weight:600">O toca un cliente para asignar individualmente:</div>
+        ${rows}
       </div>
     </div>`;
   }).join('');
 }
 
-function togglePrev(sid) {
-  const body = document.getElementById('pb-'+sid);
-  body.classList.toggle('open');
+function togglePrev(bodyId,chevId){
+  const b=document.getElementById(bodyId);
+  const c=document.getElementById(chevId);
+  if(b){const o=b.classList.toggle('open');if(c)c.classList.toggle('open',o);}
 }
 
-/* ═══════════════════════════════════════════════
-   ASIGNACIÓN
-═══════════════════════════════════════════════ */
-function abrirModal(sid, pi) {
-  modalContext = { sid, pi };
-  const p = submissions[sid].pedidos[pi];
-  document.getElementById('modal-title').textContent = p.cliente;
-  const key = sid+'__'+pi;
-  const actual = asignaciones[key] || '';
-  document.getElementById('modal-opciones').innerHTML = `
-    <div class="modal-option${actual===''?' sel':''}" onclick="asignarModal('')">
-      Sin asignar
-    </div>
-    ${camiones.map(c=>`
-      <div class="modal-option${actual===c.id?' sel':''}" onclick="asignarModal('${c.id}')">
-        <span>${c.nombre}</span>
-        <span style="font-size:12px;color:var(--muted)">${c.chofer}</span>
-      </div>`).join('')}
-  `;
+function actualizarStats(){
+  let totCli=0,totCaj=0,sinAsig=0;
+  Object.keys(subs).forEach(sid=>{
+    const s=subs[sid];totCaj+=s.totalCajas+s.totalPromo;
+    s.pedidos.forEach((_,i)=>{totCli++;if(!asig[sid+'__'+i])sinAsig++;});
+  });
+  document.getElementById('st-prev').textContent=Object.keys(subs).length;
+  document.getElementById('st-cli').textContent=totCli;
+  document.getElementById('st-caj').textContent=totCaj;
+  document.getElementById('st-sin').textContent=sinAsig;
+  const al=document.getElementById('alerta');
+  if(!totCli){al.style.display='none';}
+  else if(sinAsig){al.className='alert warn';al.style.display='block';al.textContent=`⚠ ${sinAsig} cliente${sinAsig>1?'s':''} sin camión asignado`;}
+  else{al.className='alert ok';al.style.display='block';al.textContent='✓ Todos los clientes están asignados';}
+}
+
+/* ── ASIGNAR TODOS (truck btn) ── */
+async function asignarTodos(sid,camId){
+  subs[sid].pedidos.forEach((_,i)=>{asig[sid+'__'+i]=camId;});
+  await guardar();
+  renderPedidos();actualizarStats();
+  showToast(`${subs[sid].pedidos.length} clientes → ${cams.find(c=>c.id===camId)?.nombre} ✓`);
+}
+
+/* ── MODAL CLIENTE ── */
+function abrirModal(sid,pi){
+  mSid=sid;mPi=pi;
+  const p=subs[sid].pedidos[pi];
+  document.getElementById('modal-title').textContent=esc(p.cliente);
+  document.getElementById('modal-sub').textContent=`${p.cajas} cajas${p.promo?'+'+p.promo+' prom':''} · $${fmt(p.total)}`;
+  const actual=asig[sid+'__'+pi]||'';
+  document.getElementById('modal-body').innerHTML=
+    `<div class="mcam-btn${actual===''?' sel':''}" onclick="asignarCliente('')">
+      <span class="mcam-icon" style="font-size:20px">✕</span>
+      <div class="mcam-info"><div class="mcam-name" style="color:var(--rojo)">Quitar asignación</div></div>
+    </div>`+
+    cams.map(cam=>{
+      const load=cargaCam(cam.id);
+      const cap=cam.capacidad||0;
+      const isSel=cam.id===actual;
+      const det=cap?`${cam.chofer} · ${load}/${cap}cj${load>cap?' ⚠':''}`:`${cam.chofer}${load?' · '+load+' cj':''}`;
+      return`<div class="mcam-btn${isSel?' sel':''}" onclick="asignarCliente('${cam.id}')">
+        <span class="mcam-icon">🚛</span>
+        <div class="mcam-info">
+          <div class="mcam-name">${esc(cam.nombre)}</div>
+          <div class="mcam-det">${det}</div>
+        </div>
+        ${isSel?'<span style="color:var(--azul2);font-size:20px">✓</span>':''}
+      </div>`;
+    }).join('');
   document.getElementById('modal-bg').classList.add('open');
 }
 
-function cerrarModal(e) {
-  if (e && e.target !== document.getElementById('modal-bg')) return;
-  document.getElementById('modal-bg').classList.remove('open');
-  modalContext = null;
+async function asignarCliente(camId){
+  const key=mSid+'__'+mPi;
+  if(camId)asig[key]=camId;else delete asig[key];
+  await guardar();cerrarModal();
+  renderPedidos();actualizarStats();
+  showToast(camId?'Asignado ✓':'Quitado de camión');
 }
 
-async function asignarModal(camionId) {
-  if (!modalContext) return;
-  const { sid, pi } = modalContext;
-  const key = sid+'__'+pi;
-  if (camionId) asignaciones[key] = camionId;
-  else delete asignaciones[key];
-  await guardarAsignaciones();
-  document.getElementById('modal-bg').classList.remove('open');
-  modalContext = null;
-  renderPedidos();
-  actualizarStats();
-  showToast(camionId ? 'Asignado ✓' : 'Quitado de camión');
+function bgClick(e){if(e.target===document.getElementById('modal-bg'))cerrarModal();}
+function cerrarModal(){document.getElementById('modal-bg').classList.remove('open');}
+
+/* ── PEDIDO MANUAL ── */
+async function agregarManual(){
+  const zona=document.getElementById('m-zona').value.trim();
+  const vend=document.getElementById('m-vend').value.trim()||'Manual';
+  const cli=document.getElementById('m-cli').value.trim();
+  const caj=parseInt(document.getElementById('m-caj').value)||0;
+  const pro=parseInt(document.getElementById('m-pro').value)||0;
+  const pre=parseInt(document.getElementById('m-pre').value)||0;
+  if(!cli){showToast('Escribe el nombre del cliente');return;}
+  if(!caj&&!pro){showToast('Ingresa cajas o promoción');return;}
+  const p={id:Date.now(),cliente:cli,cajas:caj,promo:pro,precio:pre,total:caj*pre,credito:false,ncf:false,rnc:'',nota:''};
+  const ek=Object.keys(subs).find(k=>subs[k].zona===zona&&subs[k].vendedor===vend);
+  if(ek){subs[ek].pedidos.push(p);subs[ek].totalCajas+=caj;subs[ek].totalPromo+=pro;subs[ek].totalDinero+=p.total;}
+  else{const sid='manual_'+Date.now();subs[sid]={id:sid,vendedor:vend,zona,fecha:new Date().toISOString().slice(0,10),enviado:new Date().toISOString(),pedidos:[p],totalCajas:caj,totalPromo:pro,totalDinero:p.total,asignado:false};}
+  await guardar();
+  ['m-zona','m-vend','m-cli','m-caj','m-pro'].forEach(id=>{document.getElementById(id).value='';});
+  renderPedidos();actualizarStats();showToast('Cliente agregado ✓');
 }
 
-async function asignarDesdeSelect(sid, pi, sel) {
-  const key = sid+'__'+pi;
-  const val = sel.value;
-  if (val) { asignaciones[key] = val; sel.className = 'cliente-assign assigned'; }
-  else     { delete asignaciones[key]; sel.className = 'cliente-assign'; }
-  await guardarAsignaciones();
-  actualizarStats();
-  // Update card badge
-  const s = submissions[sid];
-  const totalAsig = s.pedidos.filter((_,i2) => asignaciones[sid+'__'+i2]).length;
-  const pct = Math.round(totalAsig/s.pedidos.length*100);
-  const card = document.getElementById('pc-'+sid);
-  if(card) {
-    card.className = 'prev-card '+(pct===100?'enviado':'pendiente');
-    const badge = card.querySelector('.prev-badge');
-    if(badge) {
-      badge.className = 'prev-badge '+(pct===100?'badge-ok':pct===0?'badge-none':'badge-warn');
-      badge.textContent = pct===100?'Asignado':pct===0?'Sin asignar':`${totalAsig}/${s.pedidos.length}`;
-    }
-  }
-}
-
-async function asignarTodos(sid) {
-  abrirModal(sid, -1);
-  // Special: assign all from this submission
-  document.getElementById('modal-title').textContent = 'Asignar TODOS los clientes';
-  const actual = '';
-  document.getElementById('modal-opciones').innerHTML =
-    camiones.map(c=>`
-      <div class="modal-option" onclick="asignarTodosACamion('${sid}','${c.id}')">
-        <span>${c.nombre}</span>
-        <span style="font-size:12px;color:var(--muted)">${c.chofer}</span>
-      </div>`).join('');
-  modalContext = null;
-}
-
-async function asignarTodosACamion(sid, camionId) {
-  const s = submissions[sid];
-  s.pedidos.forEach((_,pi) => { asignaciones[sid+'__'+pi] = camionId; });
-  await guardarAsignaciones();
-  document.getElementById('modal-bg').classList.remove('open');
-  renderPedidos();
-  actualizarStats();
-  showToast('Todos asignados a '+camiones.find(c=>c.id===camionId)?.nombre+' ✓');
-}
-
-async function quitarCliente(sid, pi) {
-  const key = sid+'__'+pi;
-  delete asignaciones[key];
-  await guardarAsignaciones();
-  renderCamionesDetalle();
-  renderPedidos();
-  actualizarStats();
-  showToast('Cliente quitado del camión');
-}
-
-/* ═══════════════════════════════════════════════
-   STATS
-═══════════════════════════════════════════════ */
-function actualizarStats() {
-  const sids = Object.keys(submissions);
-  let totalClientes=0, totalCajas=0, sinAsig=0;
-  sids.forEach(sid => {
-    const s = submissions[sid];
-    totalCajas += s.totalCajas + s.totalPromo;
-    s.pedidos.forEach((_,pi) => {
-      totalClientes++;
-      if (!asignaciones[sid+'__'+pi]) sinAsig++;
-    });
-  });
-  document.getElementById('st-preventas').textContent = sids.length;
-  document.getElementById('st-clientes').textContent  = totalClientes;
-  document.getElementById('st-cajas').textContent     = totalCajas;
-  document.getElementById('st-sin').textContent       = sinAsig;
-
-  const alertSin = document.getElementById('alert-sin');
-  const alertOk  = document.getElementById('alert-ok');
-  if (totalClientes === 0) { alertSin.style.display='none'; alertOk.style.display='none'; }
-  else if (sinAsig > 0) {
-    alertSin.style.display='block'; alertSin.className='alert warn';
-    alertSin.textContent = `⚠ ${sinAsig} cliente${sinAsig>1?'s':''} sin camión asignado`;
-    alertOk.style.display='none';
-  } else {
-    alertSin.style.display='none';
-    alertOk.style.display='block';
-  }
-}
-
-/* ═══════════════════════════════════════════════
-   CAMIONES CONFIG (Tab 2 top)
-═══════════════════════════════════════════════ */
-function renderCamionesConfig() {
-  const cont = document.getElementById('camiones-config-list');
-  cont.innerHTML = camiones.map((c,i) => `
-    <div style="padding:8px 0;border-bottom:1px solid var(--gris2)">
-      <div style="display:flex;align-items:flex-start;gap:8px">
-        <div style="flex:1;display:grid;gap:5px">
-          <input type="text" value="${esc(c.nombre)}" placeholder="Nombre camión" style="font-size:14px;padding:6px 10px"
-            onchange="updateCamion(${i},'nombre',this.value)">
-          <input type="text" value="${esc(c.chofer)}" placeholder="Chofer" style="font-size:13px;padding:5px 10px"
-            onchange="updateCamion(${i},'chofer',this.value)">
-          <input type="number" value="${c.capacidad||''}" placeholder="Capacidad máx. de cajas (opcional)" style="font-size:13px;padding:5px 10px" min="0" inputmode="numeric"
-            onchange="updateCamion(${i},'capacidad',+this.value)">
+/* ── CAMIONES CONFIG ── */
+function renderCamConfig(){
+  document.getElementById('cam-config').innerHTML=cams.map((cam,i)=>{
+    const load=cargaCam(cam.id);
+    const cap=cam.capacidad||0;
+    const pct=cap?Math.min(Math.round(load/cap*100),100):0;
+    const over=cap&&load>cap;
+    const fc=!cap?'':pct<80?'cap-ok':pct<100?'cap-warn':'cap-over';
+    const barH=cap?`<div class="cap-bar-bg"><div class="cap-bar-fill ${fc}" style="width:${pct}%"></div></div>
+      <div class="cap-text"><span>${load}/${cap} cajas</span>${over?`<span class="cap-over-txt">⚠ +${load-cap} · ${Math.ceil(load/cap)} viajes</span>`:`<span>${100-pct}% libre</span>`}</div>`
+      :(load?`<div style="font-size:11px;color:var(--muted);margin-top:4px">${load} cajas asignadas</div>`:'');
+    const pillCls=over?'over':cap&&pct>=80?'warn':'';
+    return`<div class="camion-card">
+      <div class="cam-head" onclick="toggleCam('cfg-${cam.id}')">
+        <div class="cam-head-info">
+          <div class="cam-name">🚛 ${esc(cam.nombre)}</div>
+          <div class="cam-chofer">${esc(cam.chofer)}</div>
+          ${barH}
         </div>
-        <button onclick="eliminarCamion(${i})" style="background:none;border:none;font-size:20px;color:var(--borde);cursor:pointer;padding:4px;margin-top:4px">×</button>
-      </div>
-    </div>`).join('');
-}
-
-async function updateCamion(i, field, val) {
-  camiones[i][field] = val;
-  await guardarCamiones();
-  renderPedidos();
-}
-
-async function agregarCamion() {
-  const n = camiones.length + 1;
-  camiones.push({ id:'c'+Date.now(), nombre:'Camión '+n, chofer:'Chofer '+n, zonas:'' });
-  await guardarCamiones();
-  renderCamionesConfig();
-  renderPedidos();
-}
-
-async function eliminarCamion(i) {
-  if (!confirm('¿Eliminar '+camiones[i].nombre+'?')) return;
-  const cid = camiones[i].id;
-  camiones.splice(i,1);
-  // Remove asignaciones to this camion
-  Object.keys(asignaciones).forEach(k => { if(asignaciones[k]===cid) delete asignaciones[k]; });
-  await guardarCamiones();
-  await guardarAsignaciones();
-  renderCamionesConfig();
-  renderPedidos();
-  renderCamionesDetalle();
-  actualizarStats();
-}
-
-/* ═══════════════════════════════════════════════
-   CAPACITY BAR HTML
-═══════════════════════════════════════════════ */
-function capBarHTML(cam, totalCajas) {
-  const cap = cam.capacidad || 0;
-  if (!cap) return '';
-  const pct  = Math.min(Math.round(totalCajas / cap * 100), 100);
-  const over  = totalCajas > cap;
-  const viajes = over ? Math.ceil(totalCajas / cap) : 1;
-  const fillClass = pct < 80 ? 'cap-ok' : pct < 100 ? 'cap-warn' : 'cap-over';
-  return `<div class="cap-wrap">
-    <div class="cap-bar-bg"><div class="cap-bar-fill ${fillClass}" style="width:${pct}%"></div></div>
-    <div class="cap-label">
-      <span>${totalCajas} / ${cap} cajas</span>
-      ${over
-        ? `<span class="over">⚠ +${totalCajas-cap} exceso · ${viajes} viajes</span>`
-        : `<span>${100-pct}% libre</span>`}
-    </div>
-  </div>`;
-}
-
-/* ═══════════════════════════════════════════════
-   CAMIONES DETALLE (Tab 2 bottom)
-═══════════════════════════════════════════════ */
-function renderCamionesDetalle() {
-  const cont = document.getElementById('camiones-list');
-  cont.innerHTML = camiones.map(cam => {
-    // Gather all clients assigned to this camion
-    const items = [];
-    Object.keys(submissions).forEach(sid => {
-      const s = submissions[sid];
-      s.pedidos.forEach((p, pi) => {
-        if (asignaciones[sid+'__'+pi] === cam.id) {
-          items.push({ sid, pi, p, zona: s.zona, vendedor: s.vendedor });
-        }
-      });
-    });
-
-    const totCajas  = items.reduce((a,x)=>a+x.p.cajas,0);
-    const totPromo  = items.reduce((a,x)=>a+x.p.promo,0);
-    const totDinero = items.reduce((a,x)=>a+x.p.total,0);
-
-    const clientesHTML = items.length === 0
-      ? '<div class="camion-empty">Sin clientes asignados</div>'
-      : items.map(({sid,pi,p,zona,vendedor}) => `
-          <div class="camion-cliente-row">
-            <div class="camion-cliente-name">
-              ${esc(p.cliente)}
-              <div class="camion-cliente-detail">${esc(zona)} · V:${p.cajas}${p.promo?'+P'+p.promo:''} · $${fmt(p.total)}</div>
-            </div>
-            <button class="btn-quitar" onclick="quitarCliente('${sid}',${pi})">×</button>
-          </div>`).join('');
-
-    const zonasList = [...new Set(items.map(x=>x.zona))].join(', ');
-
-    const totalLoad = totCajas + totPromo;
-    const cap = cam.capacidad || 0;
-    const isOver = cap > 0 && totalLoad > cap;
-    const headerExtra = isOver ? ' style="background:#7f1d1d"' : '';
-
-    return `<div class="camion-card">
-      <div class="camion-header" onclick="toggleCamion('det-${cam.id}')"${headerExtra}>
-        <div style="flex:1;min-width:0">
-          <div class="camion-name">${esc(cam.nombre)}</div>
-          <div class="camion-meta">${esc(cam.chofer)}${zonasList?' · '+zonasList:''}</div>
-          ${capBarHTML(cam, totalLoad)}
-        </div>
-        <div class="camion-stats" style="margin-left:8px">
-          <span class="camion-stat-pill">${items.length} cl.</span>
-          <span class="camion-stat-pill${isOver?' style=\"background:#ef4444\"':''}">${totalLoad}cj</span>
+        <div class="cam-pills">
+          <span class="pill ${pillCls}">${load}cj</span>
+          <span style="color:var(--muted);font-size:18px">›</span>
         </div>
       </div>
-      <div class="camion-body" id="det-${cam.id}">
-        ${clientesHTML}
-        ${items.length>0?`<div style="font-size:12px;color:var(--muted);padding:8px 0;border-top:1px solid var(--gris2);margin-top:4px">
-          Venta: ${totCajas} · Promo: ${totPromo} · Total: $${fmt(totDinero)}
-        </div>`:''}
+      <div class="cam-body" id="cfg-${cam.id}">
+        <div class="cam-cfg">
+          <input type="text" value="${esc(cam.nombre)}" placeholder="Nombre del camión" onchange="updCam(${i},'nombre',this.value)">
+          <input type="text" value="${esc(cam.chofer)}" placeholder="Nombre del chofer" onchange="updCam(${i},'chofer',this.value)">
+          <input type="number" value="${cam.capacidad||''}" placeholder="Capacidad máx. en cajas (opcional)" min="0" inputmode="numeric" onchange="updCam(${i},'capacidad',+this.value)">
+        </div>
+        <button onclick="elimCam(${i})" style="margin-top:8px;width:100%;background:var(--rojo-bg);color:var(--rojo);border:none;border-radius:8px;padding:8px;font-size:13px;font-weight:600;cursor:pointer">Eliminar camión</button>
       </div>
     </div>`;
   }).join('');
 }
 
-function toggleCamion(id) {
-  const el = document.getElementById(id);
-  if(el) el.classList.toggle('open');
+function toggleCam(id){document.getElementById(id)?.classList.toggle('open');}
+
+async function updCam(i,f,v){cams[i][f]=v;await guardar();renderCamConfig();renderPedidos();}
+async function agregarCamion(){
+  cams.push({id:'c'+Date.now(),nombre:'Camión '+(cams.length+1),chofer:'Chofer '+(cams.length+1),capacidad:0});
+  await guardar();renderCamConfig();renderPedidos();
+}
+async function elimCam(i){
+  if(!confirm('¿Eliminar '+cams[i].nombre+'?'))return;
+  const cid=cams[i].id;cams.splice(i,1);
+  Object.keys(asig).forEach(k=>{if(asig[k]===cid)delete asig[k];});
+  await guardar();renderCamConfig();renderCamDetalle();renderPedidos();actualizarStats();
 }
 
-/* ═══════════════════════════════════════════════
-   PEDIDO MANUAL / TARDÍO
-═══════════════════════════════════════════════ */
-async function agregarManual() {
-  const zona     = document.getElementById('m-zona').value.trim();
-  const vendedor = document.getElementById('m-vendedor').value.trim() || 'Manual';
-  const cliente  = document.getElementById('m-cliente').value.trim();
-  const cajas    = parseInt(document.getElementById('m-cajas').value) || 0;
-  const promo    = parseInt(document.getElementById('m-promo').value) || 0;
-  const precio   = parseInt(document.getElementById('m-precio').value) || 0;
+/* ── CAMIONES DETALLE ── */
+function renderCamDetalle(){
+  document.getElementById('cam-detalle').innerHTML=cams.map(cam=>{
+    const items=[];
+    Object.keys(subs).forEach(sid=>{subs[sid].pedidos.forEach((p,i)=>{if(asig[sid+'__'+i]===cam.id)items.push({sid,i,p,zona:subs[sid].zona});});});
+    const totC=items.reduce((a,x)=>a+x.p.cajas,0);
+    const totP=items.reduce((a,x)=>a+x.p.promo,0);
+    const totD=items.reduce((a,x)=>a+x.p.total,0);
+    const zonas=[...new Set(items.map(x=>x.zona))].join(', ');
+    const rows=items.length
+      ?items.map(({sid,i,p,zona})=>`<div class="cam-cli">
+          <div class="cam-cli-info">
+            <div class="cam-cli-name">${esc(p.cliente)}</div>
+            <div class="cam-cli-det">${esc(zona)} · V:${p.cajas}${p.promo?'+P'+p.promo:''} · $${fmt(p.total)}</div>
+          </div>
+          <button class="btn-x" onclick="quitarCli('${sid}',${i})">×</button>
+        </div>`).join('')
+      :'<div class="cam-empty">Sin clientes asignados</div>';
+    return`<div class="camion-card">
+      <div class="cam-head" onclick="toggleCam('det-${cam.id}')">
+        <div class="cam-head-info">
+          <div class="cam-name">🚛 ${esc(cam.nombre)}</div>
+          <div class="cam-chofer">${esc(cam.chofer)}${zonas?' · '+zonas:''}</div>
+        </div>
+        <div class="cam-pills">
+          <span class="pill">${items.length}cl</span>
+          <span class="pill">${totC+totP}cj</span>
+        </div>
+      </div>
+      <div class="cam-body" id="det-${cam.id}">
+        ${rows}
+        ${items.length?`<div style="font-size:11px;color:var(--muted);padding:8px 0 0;border-top:1px solid var(--gris2);margin-top:4px">Venta:${totC} · Prom:${totP} · $${fmt(totD)}</div>`:''}
+      </div>
+    </div>`;
+  }).join('');
+}
 
-  if (!cliente) { showToast('Escribe el nombre del cliente'); return; }
-  if (!cajas && !promo) { showToast('Ingresa cajas o promoción'); return; }
+async function quitarCli(sid,i){
+  delete asig[sid+'__'+i];await guardar();
+  renderCamDetalle();renderCamConfig();renderPedidos();actualizarStats();
+  showToast('Cliente quitado del camión');
+}
 
-  const sid = 'manual_'+zona.replace(/\s+/g,'_')+'_'+Date.now();
-  const p = { id: Date.now(), cliente, cajas, promo, precio, total: cajas*precio, credito:false, ncf:false, rnc:'', nota:'' };
-
-  // Merge into existing submission for that zone/vendedor or create new
-  const existKey = Object.keys(submissions).find(k => submissions[k].zona===zona && submissions[k].vendedor===vendedor);
-  if (existKey) {
-    submissions[existKey].pedidos.push(p);
-    submissions[existKey].totalCajas  += cajas;
-    submissions[existKey].totalPromo  += promo;
-    submissions[existKey].totalDinero += p.total;
-  } else {
-    submissions[sid] = {
-      id: sid, vendedor, zona, fecha: new Date().toISOString().slice(0,10),
-      enviado: new Date().toISOString(),
-      pedidos: [p],
-      totalCajas: cajas, totalPromo: promo, totalDinero: p.total,
-      asignado: false
-    };
-  }
-
-  try {
-    await guardarBin();
-    showToast('Cliente agregado ✓');
-  } catch(e) {
-    showToast('Agregado localmente (sin conexión)');
-  }
-
-  ['m-zona','m-vendedor','m-cliente','m-cajas','m-promo'].forEach(id => {
-    document.getElementById(id).value = '';
+/* ── ENVIAR ── */
+function poblarSel(){
+  document.getElementById('sel-cam').innerHTML='<option value="">— Seleccionar camión —</option>'+
+    cams.map(c=>`<option value="${c.id}">${c.nombre} – ${c.chofer}</option>`).join('');
+}
+function genResumenCam(){
+  const cid=document.getElementById('sel-cam').value;
+  const out=document.getElementById('res-cam');
+  if(!cid){out.textContent='Selecciona un camión arriba.';return;}
+  const cam=cams.find(c=>c.id===cid);
+  const items=[];
+  Object.keys(subs).forEach(sid=>{subs[sid].pedidos.forEach((p,i)=>{if(asig[sid+'__'+i]===cid)items.push({p,zona:subs[sid].zona});});});
+  if(!items.length){out.textContent='Sin clientes asignados.';return;}
+  const zonas=[...new Set(items.map(x=>x.zona))].join('+');
+  const tot=items.reduce((a,x)=>a+x.p.cajas+x.p.promo,0);
+  let txt=`@${cam.chofer}\n${zonas}\nMas\n`;
+  items.forEach(({p})=>{
+    let l=`${p.cajas}${p.promo?'+'+p.promo:''} ${p.cliente}`;
+    if(p.ncf)l+=' (Factura)';if(p.credito)l+=' (Crédito autorizado)';if(p.nota)l+=' ('+p.nota+')';
+    txt+=l+'\n';
   });
-
-  renderPedidos();
-  actualizarStats();
+  txt+=`Total ${tot}`;
+  out.textContent=txt;
 }
-
-/* ═══════════════════════════════════════════════
-   RESUMEN / ENVÍO (Tab 3)
-═══════════════════════════════════════════════ */
-function poblarSelectCamion() {
-  const sel = document.getElementById('sel-camion-resumen');
-  sel.innerHTML = '<option value="">— Todos los camiones —</option>' +
-    camiones.map(c=>`<option value="${c.id}">${c.nombre} – ${c.chofer}</option>`).join('');
-}
-
-function generarResumenCamion() {
-  const camId = document.getElementById('sel-camion-resumen').value;
-  const out   = document.getElementById('resumen-output');
-  if (!camId) { out.textContent = 'Selecciona un camión para ver su resumen.'; return; }
-
-  const cam = camiones.find(c=>c.id===camId);
-  const items = [];
-  Object.keys(submissions).forEach(sid => {
-    const s = submissions[sid];
-    s.pedidos.forEach((p,pi) => {
-      if (asignaciones[sid+'__'+pi]===camId) items.push({ p, zona:s.zona });
-    });
+function genResumenGen(){
+  let txt='';let sin=0;
+  cams.forEach(cam=>{
+    const items=[];
+    Object.keys(subs).forEach(sid=>{subs[sid].pedidos.forEach((p,i)=>{if(asig[sid+'__'+i]===cam.id)items.push({p,zona:subs[sid].zona});});});
+    if(!items.length)return;
+    const tot=items.reduce((a,x)=>a+x.p.cajas+x.p.promo,0);
+    const cap=cam.capacidad||0;
+    const zonas=[...new Set(items.map(x=>x.zona))].join('+');
+    const capS=cap?` · ${tot}/${cap}cj${tot>cap?' ⚠ '+Math.ceil(tot/cap)+' viajes':''}`:` · ${tot}cj`;
+    txt+=`${cam.nombre} (${cam.chofer})${capS} · ${zonas}\n`;
   });
-
-  if (items.length === 0) { out.textContent = 'No hay clientes asignados a este camión.'; return; }
-
-  const zonas = [...new Set(items.map(x=>x.zona))].join('+');
-  const totCajas  = items.reduce((a,x)=>a+x.p.cajas,0);
-  const totPromo  = items.reduce((a,x)=>a+x.p.promo,0);
-  const totDinero = items.reduce((a,x)=>a+x.p.total,0);
-
-  let txt = `@${cam.chofer}\n`;
-  txt += `${zonas}\n`;
-  txt += `Mas\n`;
-  items.forEach(({p}) => {
-    let linea = `${p.cajas}${p.promo?'+'+p.promo:''} ${p.cliente}`;
-    if (p.ncf)    linea += ' (Factura)';
-    if (p.credito) linea += ' (Crédito autorizado)';
-    if (p.nota)   linea += ' ('+p.nota+')';
-    txt += linea + '\n';
-  });
-  txt += `Total ${totCajas+totPromo}`;
-  out.textContent = txt;
+  Object.keys(subs).forEach(sid=>{subs[sid].pedidos.forEach((_,i)=>{if(!asig[sid+'__'+i])sin++;});});
+  if(sin)txt+=`\n⚠ SIN ASIGNAR: ${sin} cliente${sin>1?'s':''}`;
+  document.getElementById('res-gen').textContent=txt||'—';
 }
+function copiar(id){
+  const t=document.getElementById(id).textContent;
+  if(navigator.clipboard)navigator.clipboard.writeText(t).then(()=>showToast('Copiado ✓'));
+  else{const x=document.createElement('textarea');x.value=t;x.style.position='fixed';x.style.opacity='0';document.body.appendChild(x);x.select();document.execCommand('copy');document.body.removeChild(x);showToast('Copiado ✓');}
+}
+function abrirWA(){window.open('https://wa.me/?text='+encodeURIComponent(document.getElementById('res-cam').textContent),'_blank');}
 
-function generarResumenGeneral() {
-  const out = document.getElementById('resumen-general');
-  if (camiones.length === 0) { out.textContent = '—'; return; }
-
-  let txt = '';
-  camiones.forEach(cam => {
-    const items = [];
-    Object.keys(submissions).forEach(sid => {
-      const s = submissions[sid];
-      s.pedidos.forEach((p,pi) => {
-        if (asignaciones[sid+'__'+pi]===cam.id) items.push({ p, zona:s.zona });
-      });
-    });
-    if (items.length === 0) return;
-    const zonas = [...new Set(items.map(x=>x.zona))].join('+');
-    const tot = items.reduce((a,x)=>a+x.p.cajas+x.p.promo,0);
-    const cap2 = cam.capacidad || 0;
-    const over2 = cap2 > 0 && tot > cap2;
-    const viajes2 = over2 ? Math.ceil(tot/cap2) : 1;
-    const capStr = cap2 ? ` · Cap: ${tot}/${cap2}${over2?' ⚠ '+viajes2+' viajes':''}` : '';
-    txt += `${cam.nombre} (${cam.chofer}): ${items.length} clientes · ${tot} cajas${capStr} · ${zonas}\n`;
-  });
-
-  // Sin asignar
-  let sinAsig = 0;
-  Object.keys(submissions).forEach(sid => {
-    submissions[sid].pedidos.forEach((_,pi) => {
-      if (!asignaciones[sid+'__'+pi]) sinAsig++;
-    });
-  });
-  if (sinAsig > 0) txt += `\n⚠ SIN ASIGNAR: ${sinAsig} cliente${sinAsig>1?'s':''}`;
-  out.textContent = txt || '—';
-}
-
-function copiarResumen() {
-  const txt = document.getElementById('resumen-output').textContent;
-  copiarTexto(txt, 'Resumen copiado ✓');
-}
-function copiarGeneral() {
-  const txt = document.getElementById('resumen-general').textContent;
-  copiarTexto(txt, 'Resumen general copiado ✓');
-}
-function abrirWhatsApp() {
-  const txt = document.getElementById('resumen-output').textContent;
-  window.open('https://wa.me/?text='+encodeURIComponent(txt), '_blank');
-}
-function copiarTexto(txt, msg) {
-  if (navigator.clipboard) navigator.clipboard.writeText(txt).then(()=>showToast(msg));
-  else {
-    const ta = document.createElement('textarea');
-    ta.value=txt; ta.style.position='fixed'; ta.style.opacity='0';
-    document.body.appendChild(ta); ta.select(); document.execCommand('copy');
-    document.body.removeChild(ta); showToast(msg);
-  }
-}
-
-/* ═══════════════════════════════════════════════
-   UTILS
-═══════════════════════════════════════════════ */
-function fmt(n) { return Number(n).toLocaleString('es-DO'); }
-function esc(s) { if(!s) return ''; const d=document.createElement('div'); d.textContent=s; return d.innerHTML; }
-function showToast(msg) {
-  const t = document.getElementById('toast');
-  t.textContent = msg; t.classList.add('show');
-  setTimeout(()=>t.classList.remove('show'), 2500);
-}
+function fmt(n){return Number(n).toLocaleString('es-DO');}
+function esc(s){if(!s)return'';const d=document.createElement('div');d.textContent=s;return d.innerHTML;}
+function showToast(m){const t=document.getElementById('toast');t.textContent=m;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2500);}
 </script>
 </body>
 </html>
