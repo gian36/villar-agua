@@ -1,0 +1,868 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#0a3d6b">
+<title>Preventa – Villar Agua</title>
+<style>
+:root {
+  --azul: #0a3d6b;
+  --azul2: #1565c0;
+  --celeste: #e3f0ff;
+  --verde: #166534;
+  --verde-bg: #dcfce7;
+  --rojo: #991b1b;
+  --rojo-bg: #fee2e2;
+  --gris: #f8fafc;
+  --gris2: #e2e8f0;
+  --texto: #1e293b;
+  --muted: #64748b;
+  --borde: #cbd5e1;
+  --blanco: #ffffff;
+  --sombra: 0 1px 3px rgba(0,0,0,.12), 0 1px 2px rgba(0,0,0,.08);
+  --radio: 12px;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+html, body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background: #e8f0fe;
+  color: var(--texto);
+  min-height: 100vh;
+  font-size: 16px;
+}
+
+/* -------- TOP BAR -------- */
+.topbar {
+  background: var(--azul);
+  color: white;
+  padding: 14px 16px 12px;
+  position: sticky; top: 0; z-index: 100;
+  display: flex; align-items: center; justify-content: space-between;
+}
+.topbar-title { font-size: 18px; font-weight: 700; letter-spacing: -.3px; }
+.topbar-sub   { font-size: 12px; opacity: .7; margin-top: 1px; }
+.topbar-badge {
+  background: rgba(255,255,255,.2);
+  color: white;
+  font-size: 13px; font-weight: 600;
+  padding: 4px 10px; border-radius: 20px;
+}
+
+/* -------- SCREENS -------- */
+.screen { display: none; flex-direction: column; min-height: calc(100vh - 56px); }
+.screen.active { display: flex; }
+
+/* -------- CARDS -------- */
+.card {
+  background: var(--blanco);
+  border-radius: var(--radio);
+  box-shadow: var(--sombra);
+  margin: 12px 14px;
+  padding: 16px;
+}
+.card-title {
+  font-size: 13px; font-weight: 600; text-transform: uppercase;
+  letter-spacing: .8px; color: var(--muted); margin-bottom: 12px;
+}
+
+/* -------- FORM -------- */
+.form-group { margin-bottom: 14px; }
+.form-label {
+  display: block; font-size: 13px; font-weight: 600;
+  color: var(--azul); margin-bottom: 5px;
+}
+.form-label span { font-weight: 400; color: var(--muted); font-size: 12px; }
+
+input[type="text"], input[type="number"], input[type="tel"],
+select, textarea {
+  width: 100%;
+  font-size: 16px; /* 16px evita zoom en iOS */
+  padding: 12px 14px;
+  border: 1.5px solid var(--borde);
+  border-radius: 10px;
+  background: var(--gris);
+  color: var(--texto);
+  appearance: none;
+  -webkit-appearance: none;
+  outline: none;
+  transition: border-color .15s;
+}
+input:focus, select:focus, textarea:focus {
+  border-color: var(--azul2);
+  background: var(--blanco);
+}
+select { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%2364748b' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 14px center; padding-right: 38px; }
+
+.precio-btns { display: grid; grid-template-columns: repeat(3,1fr); gap: 8px; }
+.precio-btn {
+  padding: 12px 4px; border: 1.5px solid var(--borde);
+  border-radius: 10px; background: var(--gris);
+  font-size: 15px; font-weight: 700; color: var(--muted);
+  cursor: pointer; text-align: center; transition: all .15s;
+}
+.precio-btn.selected {
+  background: var(--azul); border-color: var(--azul); color: white;
+}
+.precio-btn-libre {
+  grid-column: span 3;
+  display: flex; align-items: center; gap: 8px;
+  padding: 10px 12px; border: 1.5px solid var(--borde);
+  border-radius: 10px; background: var(--gris);
+}
+.precio-btn-libre label { font-size: 13px; font-weight: 600; color: var(--muted); white-space: nowrap; }
+.precio-btn-libre input { border: none; background: transparent; font-size: 16px; font-weight: 700; color: var(--texto); padding: 0; flex: 1; }
+
+/* -------- BOTONES -------- */
+.btn-main {
+  display: block; width: calc(100% - 28px); margin: 4px 14px 12px;
+  padding: 16px; border: none; border-radius: 12px;
+  font-size: 17px; font-weight: 700; cursor: pointer;
+  transition: transform .1s, opacity .15s;
+}
+.btn-main:active { transform: scale(.97); }
+.btn-agregar { background: var(--azul2); color: white; }
+.btn-resumen { background: var(--azul); color: white; }
+.btn-nuevo   { background: var(--verde-bg); color: var(--verde); }
+.btn-copy    { background: #0ea5e9; color: white; }
+.btn-limpiar { background: var(--rojo-bg); color: var(--rojo); font-size: 14px; padding: 12px; }
+
+.btn-back {
+  background: none; border: none; color: white; font-size: 22px;
+  cursor: pointer; padding: 0 10px 0 0; line-height: 1;
+}
+
+/* -------- LISTA DE PEDIDOS -------- */
+.pedido-item {
+  border-bottom: 1px solid var(--gris2); padding: 12px 0;
+  display: flex; align-items: flex-start; gap: 10px;
+}
+.pedido-item:last-child { border-bottom: none; }
+.pedido-num {
+  background: var(--azul); color: white;
+  width: 26px; height: 26px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 12px; font-weight: 700; flex-shrink: 0; margin-top: 1px;
+}
+.pedido-info { flex: 1; }
+.pedido-cliente { font-size: 15px; font-weight: 600; }
+.pedido-detalle { font-size: 13px; color: var(--muted); margin-top: 3px; }
+.pedido-precio  { font-size: 14px; font-weight: 700; color: var(--azul); margin-top: 2px; }
+.pedido-delete {
+  background: none; border: none; color: var(--borde);
+  font-size: 20px; cursor: pointer; padding: 0 4px; flex-shrink: 0;
+}
+.pedido-delete:hover { color: var(--rojo); }
+
+/* -------- EMPTY STATE -------- */
+.empty-state {
+  text-align: center; padding: 40px 20px; color: var(--muted);
+}
+.empty-icon { font-size: 48px; margin-bottom: 12px; }
+.empty-text { font-size: 15px; }
+
+/* -------- TAGS -------- */
+.tag {
+  display: inline-block; font-size: 11px; font-weight: 700;
+  padding: 2px 8px; border-radius: 20px; margin-right: 4px;
+}
+.tag-promo { background: #fef3c7; color: #92400e; }
+.tag-rnc   { background: #ede9fe; color: #4c1d95; }
+.tag-credito { background: #f0fdf4; color: #166534; border: 1px solid #86efac; }
+
+/* -------- RESUMEN -------- */
+.resumen-box {
+  background: var(--gris);
+  border: 1px solid var(--borde);
+  border-radius: 10px;
+  padding: 14px;
+  font-size: 14px; line-height: 1.8;
+  font-family: 'Courier New', monospace;
+  white-space: pre-wrap;
+  word-break: break-word;
+  color: var(--texto);
+  max-height: 55vh; overflow-y: auto;
+}
+
+/* -------- STATS -------- */
+.stats-row {
+  display: grid; grid-template-columns: repeat(3,1fr); gap: 8px;
+  margin: 0 14px 4px;
+}
+.stat-box {
+  background: var(--blanco); border-radius: 10px;
+  padding: 10px 8px; text-align: center;
+  box-shadow: var(--sombra);
+}
+.stat-val  { font-size: 20px; font-weight: 700; color: var(--azul); }
+.stat-lab  { font-size: 11px; color: var(--muted); margin-top: 2px; }
+
+/* -------- INFO RUTA -------- */
+.info-ruta { background: var(--celeste); border-radius: 10px; padding: 12px 14px; margin: 0 14px 4px; }
+.info-ruta-row { display: flex; justify-content: space-between; font-size: 13px; padding: 2px 0; }
+.info-ruta-lab { color: var(--muted); }
+.info-ruta-val { font-weight: 600; color: var(--azul); }
+
+/* -------- TOAST -------- */
+.toast {
+  position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(100px);
+  background: #1e293b; color: white; padding: 12px 24px;
+  border-radius: 30px; font-size: 14px; font-weight: 600;
+  transition: transform .3s; z-index: 999; white-space: nowrap;
+}
+.toast.show { transform: translateX(-50%) translateY(0); }
+
+/* -------- SWITCH FACTURA -------- */
+.switch-row { display: flex; align-items: center; justify-content: space-between; padding: 4px 0; }
+.switch-label { font-size: 14px; font-weight: 600; color: var(--texto); }
+.switch {
+  position: relative; width: 52px; height: 28px;
+}
+.switch input { opacity: 0; width: 0; height: 0; }
+.switch-track {
+  position: absolute; inset: 0; background: var(--gris2);
+  border-radius: 28px; cursor: pointer; transition: background .2s;
+}
+.switch-track::before {
+  content: ''; position: absolute;
+  width: 22px; height: 22px; top: 3px; left: 3px;
+  background: white; border-radius: 50%;
+  transition: transform .2s; box-shadow: 0 1px 3px rgba(0,0,0,.2);
+}
+.switch input:checked + .switch-track { background: var(--azul2); }
+.switch input:checked + .switch-track::before { transform: translateX(24px); }
+
+/* -------- SETUP SCREEN -------- */
+.setup-hero {
+  background: var(--azul);
+  color: white; text-align: center;
+  padding: 32px 20px 24px;
+}
+.setup-logo {
+  width: 70px; height: 70px; background: rgba(255,255,255,.15);
+  border-radius: 20px; display: flex; align-items: center; justify-content: center;
+  font-size: 32px; margin: 0 auto 14px;
+}
+.setup-title { font-size: 24px; font-weight: 800; }
+.setup-sub { font-size: 14px; opacity: .75; margin-top: 6px; }
+</style>
+</head>
+<body>
+
+<!-- TOPBAR -->
+<div class="topbar" id="topbar">
+  <div>
+    <div class="topbar-title" id="topbar-title">Preventa</div>
+    <div class="topbar-sub" id="topbar-sub">Villar Agua</div>
+  </div>
+  <div class="topbar-badge" id="topbar-badge">0 pedidos</div>
+</div>
+
+<!-- ========================================================
+     PANTALLA 0: CONFIGURACIÓN INICIO
+     ======================================================== -->
+<div class="screen active" id="screen-setup">
+  <div class="setup-hero">
+    <div class="setup-logo">💧</div>
+    <div class="setup-title">Preventa Villar</div>
+    <div class="setup-sub">Registra tus pedidos del día fácilmente</div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Datos del día</div>
+    <div class="form-group">
+      <label class="form-label">Tu nombre</label>
+      <input type="text" id="setup-vendedor" placeholder="Ej: Juan Pérez" autocomplete="name">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Zona / Ruta</label>
+      <select id="setup-zona">
+        <option value="">— Seleccionar —</option>
+        <option>Zona 1</option><option>Zona 2</option><option>Zona 3</option>
+        <option>Zona 4</option><option>Zona 5</option><option>Zona 6</option>
+        <option>Zona 7</option><option>Zona 8</option><option>Zona 9</option>
+        <option>Zona 10</option><option>Zona 11</option><option>Zona 12</option>
+        <option>Zona 13</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Fecha</label>
+      <input type="date" id="setup-fecha">
+    </div>
+  </div>
+
+  <button class="btn-main btn-agregar" onclick="irACaptura()">
+    Comenzar a tomar pedidos →
+  </button>
+</div>
+
+<!-- ========================================================
+     PANTALLA 1: CAPTURA DE PEDIDO
+     ======================================================== -->
+<div class="screen" id="screen-captura">
+
+  <!-- Stats rápidas -->
+  <div class="stats-row" style="margin-top:12px">
+    <div class="stat-box">
+      <div class="stat-val" id="s-clientes">0</div>
+      <div class="stat-lab">Clientes</div>
+    </div>
+    <div class="stat-box">
+      <div class="stat-val" id="s-cajas">0</div>
+      <div class="stat-lab">Cajas</div>
+    </div>
+    <div class="stat-box">
+      <div class="stat-val" id="s-total" style="font-size:15px">$0</div>
+      <div class="stat-lab">Total prev.</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Nuevo pedido</div>
+
+    <!-- Cliente -->
+    <div class="form-group">
+      <label class="form-label">Nombre del negocio</label>
+      <input type="text" id="p-cliente" placeholder="Ej: Colmado La Palma"
+             autocomplete="off" autocorrect="off" spellcheck="false">
+    </div>
+
+    <!-- Cajas + Promoción lado a lado -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+      <div class="form-group" style="margin-bottom:0">
+        <label class="form-label">Cajas</label>
+        <input type="number" id="p-cajas" placeholder="0" min="0" inputmode="numeric">
+      </div>
+      <div class="form-group" style="margin-bottom:0">
+        <label class="form-label">Promoción <span>(gratis)</span></label>
+        <input type="number" id="p-promo" placeholder="0" min="0" inputmode="numeric">
+      </div>
+    </div>
+
+    <!-- Precio -->
+    <div class="form-group" style="margin-top:14px">
+      <label class="form-label">Precio por caja</label>
+      <div class="precio-btns" id="precio-btns">
+        <div class="precio-btn" data-precio="140" onclick="selPrecio(this)">$140</div>
+        <div class="precio-btn" data-precio="125" onclick="selPrecio(this)">$125</div>
+        <div class="precio-btn" data-precio="115" onclick="selPrecio(this)">$115</div>
+      </div>
+      <div class="precio-btn-libre" style="margin-top:8px">
+        <label>Otro $</label>
+        <input type="number" id="p-precio-libre" placeholder="escribir precio"
+               inputmode="numeric" min="0" oninput="selPrecioLibre(this)">
+      </div>
+    </div>
+
+    <!-- Crédito autorizado -->
+    <div class="form-group">
+      <div class="switch-row">
+        <div>
+          <span class="switch-label">¿Cliente con crédito autorizado?</span>
+          <div style="font-size:12px;color:var(--muted);margin-top:2px">El entregador puede entregar sin cobrar</div>
+        </div>
+        <label class="switch">
+          <input type="checkbox" id="p-credito">
+          <div class="switch-track" style=""></div>
+        </label>
+      </div>
+    </div>
+
+    <!-- Factura NCF -->
+    <div class="form-group">
+      <div class="switch-row">
+        <span class="switch-label">¿Necesita factura (NCF)?</span>
+        <label class="switch">
+          <input type="checkbox" id="p-ncf" onchange="toggleNCF()">
+          <div class="switch-track"></div>
+        </label>
+      </div>
+      <div id="rnc-field" style="margin-top:10px;display:none">
+        <input type="tel" id="p-rnc" placeholder="RNC o Cédula del cliente" inputmode="numeric">
+      </div>
+    </div>
+
+    <!-- Nota -->
+    <div class="form-group">
+      <label class="form-label">Nota <span>(opcional)</span></label>
+      <input type="text" id="p-nota" placeholder="Ej: cobrar pendiente, entrar por detrás...">
+    </div>
+  </div>
+
+  <button class="btn-main btn-agregar" onclick="agregarPedido()">
+    + Agregar al listado
+  </button>
+
+  <!-- Lista de pedidos agregados -->
+  <div class="card" id="lista-card" style="display:none">
+    <div class="card-title">Pedidos agregados</div>
+    <div id="lista-pedidos"></div>
+  </div>
+
+  <div id="empty-state" class="empty-state">
+    <div class="empty-icon">📋</div>
+    <div class="empty-text">Aún no hay pedidos.<br>Llena el formulario y presiona<br><strong>Agregar al listado</strong>.</div>
+  </div>
+
+  <button class="btn-main btn-resumen" id="btn-resumen" onclick="irResumen()" style="display:none">
+    Ver resumen y enviar →
+  </button>
+  <div style="height:16px"></div>
+</div>
+
+<!-- ========================================================
+     PANTALLA 2: RESUMEN / ENVÍO WHATSAPP
+     ======================================================== -->
+<div class="screen" id="screen-resumen">
+
+  <div class="info-ruta" style="margin-top:12px">
+    <div class="info-ruta-row">
+      <span class="info-ruta-lab">Vendedor</span>
+      <span class="info-ruta-val" id="r-vendedor">—</span>
+    </div>
+    <div class="info-ruta-row">
+      <span class="info-ruta-lab">Zona</span>
+      <span class="info-ruta-val" id="r-zona">—</span>
+    </div>
+    <div class="info-ruta-row">
+      <span class="info-ruta-lab">Fecha</span>
+      <span class="info-ruta-val" id="r-fecha">—</span>
+    </div>
+  </div>
+
+  <div class="stats-row" style="margin-top:8px">
+    <div class="stat-box">
+      <div class="stat-val" id="r-clientes">0</div>
+      <div class="stat-lab">Clientes</div>
+    </div>
+    <div class="stat-box">
+      <div class="stat-val" id="r-cajas">0</div>
+      <div class="stat-lab">Cajas</div>
+    </div>
+    <div class="stat-box">
+      <div class="stat-val" id="r-promo">0</div>
+      <div class="stat-lab">Promoción</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Resumen para WhatsApp</div>
+    <div class="resumen-box" id="resumen-texto"></div>
+  </div>
+
+  <button class="btn-main btn-copy" onclick="copiarResumen()">
+    Copiar para WhatsApp
+  </button>
+
+  <!-- Estado de envío -->
+  <div id="envio-status" style="display:none;margin:0 14px 8px;padding:12px 14px;border-radius:10px;font-size:14px;font-weight:600;text-align:center"></div>
+
+  <button class="btn-main" id="btn-enviar-pedido" style="background:#0a3d6b;color:white;font-size:18px" onclick="enviarPedidoSistema()">
+    Enviar pedido al encargado
+  </button>
+
+  <button class="btn-main" style="background:#25D366;color:white" onclick="enviarWhatsApp()">
+    Copiar / Enviar por WhatsApp
+  </button>
+
+  <div style="margin: 4px 14px; display:grid; grid-template-columns:1fr 1fr; gap:10px">
+    <button class="btn-main btn-nuevo" style="margin:0" onclick="nuevoCliente()">
+      + Agregar más
+    </button>
+    <button class="btn-main btn-limpiar" style="margin:0" onclick="nuevaJornada()">
+      Nueva jornada
+    </button>
+  </div>
+  <div style="height:20px"></div>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<script>
+/* ============================================================
+   ESTADO GLOBAL
+============================================================ */
+let pedidos   = JSON.parse(localStorage.getItem('va_pedidos') || '[]');
+let vendedor  = localStorage.getItem('va_vendedor') || '';
+let zona      = localStorage.getItem('va_zona')     || '';
+let precioSel = null;
+
+/* ============================================================
+   INIT
+============================================================ */
+window.addEventListener('DOMContentLoaded', () => {
+  const hoy = new Date();
+  const dias  = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];
+  const meses = ['Enero','Febrero','Marzo','Abril','Mayo','Junio',
+                 'Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+  const pad = n => String(n).padStart(2,'0');
+  document.getElementById('setup-fecha').value = hoy.getFullYear()+'-'+pad(hoy.getMonth()+1)+'-'+pad(hoy.getDate());
+
+  if (vendedor) document.getElementById('setup-vendedor').value = vendedor;
+  if (zona)     document.getElementById('setup-zona').value = zona;
+
+  if (pedidos.length && vendedor) {
+    irACaptura();
+  }
+});
+
+/* ============================================================
+   SETUP → CAPTURA
+============================================================ */
+function irACaptura() {
+  const v = document.getElementById('setup-vendedor').value.trim();
+  const z = document.getElementById('setup-zona').value;
+  if (!v) { showToast('Escribe tu nombre primero'); return; }
+  if (!z) { showToast('Selecciona tu zona'); return; }
+  vendedor = v; zona = z;
+  localStorage.setItem('va_vendedor', v);
+  localStorage.setItem('va_zona', z);
+
+  document.getElementById('topbar-title').textContent = z;
+  document.getElementById('topbar-sub').textContent   = v;
+  mostrarScreen('captura');
+  renderLista();
+}
+
+/* ============================================================
+   SELECCIÓN DE PRECIO
+============================================================ */
+function selPrecio(el) {
+  document.querySelectorAll('.precio-btn').forEach(b => b.classList.remove('selected'));
+  el.classList.add('selected');
+  precioSel = el.dataset.precio;
+  document.getElementById('p-precio-libre').value = '';
+}
+
+function selPrecioLibre(inp) {
+  document.querySelectorAll('.precio-btn').forEach(b => b.classList.remove('selected'));
+  precioSel = inp.value ? inp.value : null;
+}
+
+/* ============================================================
+   NCF TOGGLE
+============================================================ */
+function toggleNCF() {
+  const chk = document.getElementById('p-ncf').checked;
+  document.getElementById('rnc-field').style.display = chk ? 'block' : 'none';
+}
+
+/* ============================================================
+   AGREGAR PEDIDO
+============================================================ */
+function agregarPedido() {
+  const cliente = document.getElementById('p-cliente').value.trim();
+  const cajas   = parseInt(document.getElementById('p-cajas').value) || 0;
+  const promo   = parseInt(document.getElementById('p-promo').value)  || 0;
+  const credito = document.getElementById('p-credito').checked;
+  const ncf     = document.getElementById('p-ncf').checked;
+  const rnc     = document.getElementById('p-rnc').value.trim();
+  const nota    = document.getElementById('p-nota').value.trim();
+
+  if (!cliente) { showToast('Escribe el nombre del negocio'); return; }
+  if (!cajas && !promo) { showToast('Ingresa al menos una caja o promoción'); return; }
+  if (!precioSel) { showToast('Selecciona el precio por caja'); return; }
+  if (ncf && !rnc) { showToast('Escribe el RNC o cédula para la factura'); return; }
+
+  const precio = +precioSel;
+  const total  = cajas * precio;
+
+  const p = { id: Date.now(), cliente, cajas, promo, precio, total, credito, ncf, rnc, nota };
+  pedidos.push(p);
+  localStorage.setItem('va_pedidos', JSON.stringify(pedidos));
+
+  limpiarFormulario();
+  renderLista();
+  actualizarStats();
+  showToast('Pedido agregado ✓');
+  document.getElementById('p-cliente').focus();
+}
+
+/* ============================================================
+   ELIMINAR PEDIDO
+============================================================ */
+function eliminarPedido(id) {
+  if (!confirm('¿Eliminar este pedido?')) return;
+  pedidos = pedidos.filter(p => p.id !== id);
+  localStorage.setItem('va_pedidos', JSON.stringify(pedidos));
+  renderLista();
+  actualizarStats();
+}
+
+/* ============================================================
+   RENDERIZAR LISTA
+============================================================ */
+function renderLista() {
+  const cont = document.getElementById('lista-pedidos');
+  const card = document.getElementById('lista-card');
+  const empty = document.getElementById('empty-state');
+  const btnRes = document.getElementById('btn-resumen');
+
+  if (pedidos.length === 0) {
+    card.style.display = 'none';
+    empty.style.display = 'block';
+    btnRes.style.display = 'none';
+    return;
+  }
+  card.style.display = 'block';
+  empty.style.display = 'none';
+  btnRes.style.display = 'block';
+
+  cont.innerHTML = pedidos.map((p, i) => `
+    <div class="pedido-item">
+      <div class="pedido-num">${i+1}</div>
+      <div class="pedido-info">
+        <div class="pedido-cliente">${esc(p.cliente)}</div>
+        <div class="pedido-detalle">
+          ${p.cajas} caja${p.cajas!==1?'s':''} ${p.promo ? `+ <span class="tag tag-promo">${p.promo} prom</span>` : ''}
+          ${p.ncf ? `<span class="tag tag-rnc">NCF: ${esc(p.rnc)}</span>` : ''}
+        </div>
+        <div class="pedido-precio">
+          $${fmt(p.precio)}/caja → <strong>$${fmt(p.total)}</strong>
+          ${p.credito ? '<span class="tag tag-credito">CRÉDITO</span>' : ''}
+        </div>
+        ${p.nota ? `<div style="font-size:12px;color:var(--muted);margin-top:2px">📝 ${esc(p.nota)}</div>` : ''}
+      </div>
+      <button class="pedido-delete" onclick="eliminarPedido(${p.id})">×</button>
+    </div>
+  `).join('');
+
+  actualizarStats();
+}
+
+/* ============================================================
+   STATS
+============================================================ */
+function actualizarStats() {
+  const totalCajas = pedidos.reduce((a,p) => a+p.cajas, 0);
+  const totalPromo = pedidos.reduce((a,p) => a+p.promo, 0);
+  const totalDinero= pedidos.reduce((a,p) => a+p.total, 0);
+  document.getElementById('s-clientes').textContent = pedidos.length;
+  document.getElementById('s-cajas').textContent    = totalCajas;
+  document.getElementById('s-total').textContent    = '$'+fmt(totalDinero);
+  document.getElementById('topbar-badge').textContent = pedidos.length + ' pedido' + (pedidos.length!==1?'s':'');
+}
+
+/* ============================================================
+   IR A RESUMEN
+============================================================ */
+function irResumen() {
+  if (pedidos.length === 0) { showToast('No hay pedidos aún'); return; }
+
+  const totalCajas = pedidos.reduce((a,p) => a+p.cajas, 0);
+  const totalPromo = pedidos.reduce((a,p) => a+p.promo, 0);
+  const totalDinero= pedidos.reduce((a,p) => a+p.total, 0);
+
+  document.getElementById('r-vendedor').textContent = vendedor;
+  document.getElementById('r-zona').textContent     = zona;
+  const fdRaw = document.getElementById('setup-fecha').value;
+  const [fy,fm,fd] = fdRaw.split('-');
+  const meses2 = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+  document.getElementById('r-fecha').textContent = fd+'/'+meses2[+fm-1]+'/'+fy;
+  document.getElementById('r-clientes').textContent = pedidos.length;
+  document.getElementById('r-cajas').textContent    = totalCajas;
+  document.getElementById('r-promo').textContent    = totalPromo;
+
+  const texto = generarTexto(totalDinero);
+  document.getElementById('resumen-texto').textContent = texto;
+  mostrarScreen('resumen');
+}
+
+/* ============================================================
+   GENERAR TEXTO WHATSAPP
+============================================================ */
+function generarTexto(totalDinero) {
+  const fdRaw = document.getElementById('setup-fecha').value;
+  const [fy,fm,fd] = fdRaw.split('-');
+  const meses2 = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+  const fecha = fd+'/'+meses2[+fm-1]+'/'+fy;
+
+  const totCajas = pedidos.reduce((a,p)=>a+p.cajas,0);
+  const totPromo = pedidos.reduce((a,p)=>a+p.promo,0);
+  const totCargar = totCajas + totPromo;
+
+  let txt = 'PREVENTA|'+zona+'|'+vendedor+'|'+fecha+'\n';
+  txt += '========================================\n';
+
+  pedidos.forEach((p, i) => {
+    const num = String(i+1).padStart(2,'0');
+    let linea = num+'|'+p.cliente+'|V:'+p.cajas+'|P:'+p.promo+'|$'+p.precio;
+    if (p.credito) linea += '|CREDITO';
+    if (p.ncf)     linea += '|NCF:'+p.rnc;
+    txt += linea + '\n';
+    if (p.nota)    txt += '    Nota: '+p.nota+'\n';
+  });
+
+  txt += '========================================\n';
+  txt += 'Clientes: '+pedidos.length+'\n';
+  txt += 'Venta: '+totCajas+' | Promo: '+totPromo+'\n';
+  txt += 'CARGAR CAMION: '+totCargar+' cajas\n';
+  txt += 'Total $: '+fmt(totalDinero);
+  return txt;
+}
+
+/* ============================================================
+   COPIAR / WHATSAPP
+============================================================ */
+function copiarResumen() {
+  const txt = document.getElementById('resumen-texto').textContent;
+  if (navigator.clipboard) {
+    navigator.clipboard.writeText(txt).then(() => showToast('Copiado al portapapeles ✓'));
+  } else {
+    const ta = document.createElement('textarea');
+    ta.value = txt; ta.style.position='fixed'; ta.style.opacity='0';
+    document.body.appendChild(ta); ta.select();
+    document.execCommand('copy');
+    document.body.removeChild(ta);
+    showToast('Copiado al portapapeles ✓');
+  }
+}
+
+function enviarWhatsApp() {
+  const txt = document.getElementById('resumen-texto').textContent;
+  const encoded = encodeURIComponent(txt);
+  window.open('https://wa.me/?text=' + encoded, '_blank');
+}
+
+/* ============================================================
+   NAVEGACIÓN
+============================================================ */
+function mostrarScreen(nombre) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById('screen-' + nombre).classList.add('active');
+  window.scrollTo(0, 0);
+}
+
+function nuevoCliente() {
+  mostrarScreen('captura');
+  window.scrollTo(0,0);
+  document.getElementById('p-cliente').focus();
+}
+
+function nuevaJornada() {
+  if (!confirm('¿Iniciar nueva jornada? Esto borrará todos los pedidos actuales.')) return;
+  pedidos = [];
+  localStorage.removeItem('va_pedidos');
+  renderLista();
+  actualizarStats();
+  mostrarScreen('setup');
+  showToast('Jornada reiniciada');
+}
+
+/* ============================================================
+   LIMPIAR FORMULARIO PEDIDO
+============================================================ */
+function limpiarFormulario() {
+  document.getElementById('p-cliente').value = '';
+  document.getElementById('p-cajas').value = '';
+  document.getElementById('p-promo').value = '';
+  document.getElementById('p-nota').value = '';
+  document.getElementById('p-rnc').value = '';
+  document.getElementById('p-credito').checked = false;
+  document.getElementById('p-ncf').checked = false;
+  document.getElementById('rnc-field').style.display = 'none';
+  document.getElementById('p-precio-libre').value = '';
+  document.querySelectorAll('.precio-btn').forEach(b => b.classList.remove('selected'));
+  precioSel = null;
+}
+
+/* ============================================================
+   TOAST
+============================================================ */
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2500);
+}
+
+/* ============================================================
+   UTILS
+============================================================ */
+function fmt(n) { return Number(n).toLocaleString('es-DO'); }
+function esc(s) {
+  const d = document.createElement('div');
+  d.textContent = s; return d.innerHTML;
+}
+
+/* ============================================================
+   JSONBIN CONFIG
+============================================================ */
+const JSONBIN_KEY = '$2a$10$q4eNs6WXxS3oXb25mIeINuoiZaCd69ruJI.IZhZGcstCRL4xDOPfu';
+const JSONBIN_BIN = '69e249f336566621a8c3c97c';
+const JSONBIN_URL = 'https://api.jsonbin.io/v3/b/' + JSONBIN_BIN;
+
+async function leerBin() {
+  const r = await fetch(JSONBIN_URL + '/latest', {
+    headers: { 'X-Master-Key': JSONBIN_KEY }
+  });
+  if (!r.ok) throw new Error('Error leyendo datos: ' + r.status);
+  const j = await r.json();
+  return j.record;
+}
+
+async function escribirBin(data) {
+  const r = await fetch(JSONBIN_URL, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', 'X-Master-Key': JSONBIN_KEY },
+    body: JSON.stringify(data)
+  });
+  if (!r.ok) throw new Error('Error guardando datos: ' + r.status);
+  return r.json();
+}
+
+/* ============================================================
+   ENVIAR AL SISTEMA (JSONBin)
+============================================================ */
+async function enviarPedidoSistema() {
+  if (pedidos.length === 0) { showToast('No hay pedidos para enviar'); return; }
+  const btn    = document.getElementById('btn-enviar-pedido');
+  const status = document.getElementById('envio-status');
+  btn.textContent = 'Enviando...';
+  btn.disabled = true;
+  status.style.display = 'none';
+
+  try {
+    const fdRaw = document.getElementById('setup-fecha').value;
+    const sid = vendedor.replace(/\s/g,'_') + '_' + zona.replace(/\s/g,'_');
+    const submission = {
+      id: sid, vendedor, zona, fecha: fdRaw,
+      enviado: new Date().toISOString(),
+      pedidos: pedidos.map(p => ({...p})),
+      totalCajas:  pedidos.reduce((a,p)=>a+p.cajas,0),
+      totalPromo:  pedidos.reduce((a,p)=>a+p.promo,0),
+      totalDinero: pedidos.reduce((a,p)=>a+p.total,0),
+      asignado: false
+    };
+
+    // Read → merge → write
+    let bin = {};
+    try { bin = await leerBin(); } catch(e) { bin = { pedidos:{}, asignaciones:{}, camiones:[] }; }
+    if (!bin.pedidos) bin.pedidos = {};
+    bin.pedidos[sid] = submission;
+    await escribirBin(bin);
+
+    status.style.display = 'block';
+    status.style.background = '#dcfce7';
+    status.style.color = '#166534';
+    status.textContent = '✓ Pedido enviado al encargado correctamente';
+    btn.textContent = '✓ Pedido enviado';
+    btn.style.background = '#166534';
+    showToast('Pedido enviado ✓');
+  } catch(err) {
+    status.style.display = 'block';
+    status.style.background = '#fee2e2';
+    status.style.color = '#991b1b';
+    status.textContent = 'Error de conexión. Verifica internet e intenta de nuevo.';
+    btn.textContent = 'Reintentar envío';
+    btn.disabled = false;
+    console.error(err);
+  }
+}
+</script>
+</body>
+</html>
