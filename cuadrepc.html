@@ -1,0 +1,1173 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#0a3d6b">
+<title>Cuadre de Camiones – Villar Agua</title>
+<style>
+:root{
+  --azul:#0a3d6b;--azul2:#1565c0;--celeste:#dbeafe;
+  --verde:#166534;--verde-bg:#dcfce7;
+  --rojo:#991b1b;--rojo-bg:#fee2e2;
+  --ambar:#92400e;--ambar-bg:#fef3c7;
+  --gris:#f8fafc;--gris2:#e2e8f0;
+  --texto:#1e293b;--muted:#64748b;--borde:#cbd5e1;--blanco:#fff;--radio:8px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
+  background:#e8f0fe;color:var(--texto);min-height:100vh;font-size:14px}
+
+/* ── TOPBAR ── */
+.topbar{background:var(--azul);color:white;padding:8px 20px;display:flex;
+  align-items:center;justify-content:space-between;position:sticky;top:0;z-index:200;height:44px}
+.topbar-title{font-size:16px;font-weight:700}
+.topbar-sub{font-size:11px;opacity:.7}
+
+/* ── SCREENS ── */
+.screen{display:none}.screen.active{display:block}
+
+/* ── DASHBOARD ── */
+.dash-wrap{padding:14px 20px;max-width:1400px;margin:0 auto}
+.stats-row{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px}
+.stat{background:var(--blanco);border-radius:var(--radio);padding:10px 14px;
+  box-shadow:0 1px 3px rgba(0,0,0,.08);text-align:center}
+.stat-v{font-size:22px;font-weight:700;color:var(--azul)}
+.stat-l{font-size:11px;color:var(--muted);margin-top:2px}
+.alert{padding:8px 14px;border-radius:var(--radio);font-size:13px;font-weight:600;margin-bottom:10px}
+.alert.warn{background:var(--ambar-bg);color:var(--ambar)}
+.alert.ok{background:var(--verde-bg);color:var(--verde)}
+
+/* Dashboard cam grid */
+.cam-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+.cam-card{background:var(--blanco);border-radius:var(--radio);
+  box-shadow:0 1px 3px rgba(0,0,0,.08);cursor:pointer;
+  transition:box-shadow .15s,transform .1s;overflow:hidden}
+.cam-card:hover{box-shadow:0 4px 16px rgba(10,61,107,.18);transform:translateY(-1px)}
+.cam-card-head{padding:14px 16px;display:flex;align-items:center;gap:12px}
+.cam-icon{font-size:26px;flex-shrink:0}
+.cam-info{flex:1;min-width:0}
+.cam-name{font-size:15px;font-weight:700;color:var(--azul)}
+.cam-chofer{font-size:12px;color:var(--muted);margin-top:1px}
+.cam-id{font-size:11px;font-weight:700;font-family:monospace;color:var(--azul2);
+  margin-top:3px;background:var(--celeste);display:inline-block;padding:2px 7px;border-radius:4px}
+.cam-stats{text-align:right;flex-shrink:0}
+.cam-stat-big{font-size:22px;font-weight:700;color:var(--azul)}
+.cam-stat-sub{font-size:11px;color:var(--muted)}
+.status-badge{display:inline-block;font-size:11px;font-weight:700;
+  padding:3px 9px;border-radius:20px;margin-top:3px}
+.badge-pending{background:var(--ambar-bg);color:var(--ambar)}
+.badge-done{background:var(--verde-bg);color:var(--verde)}
+.badge-diff{background:var(--rojo-bg);color:var(--rojo)}
+
+/* ── CUADRE SCREEN — PC LAYOUT ── */
+.cuadre-topbar{background:var(--azul);color:white;padding:8px 20px;
+  display:flex;align-items:center;gap:12px;position:sticky;top:44px;z-index:190;height:42px}
+.back-btn{background:none;border:none;color:white;font-size:20px;cursor:pointer;
+  padding:0;line-height:1;flex-shrink:0}
+.cuadre-title{font-size:15px;font-weight:700}
+.cuadre-sub{font-size:12px;opacity:.75;margin-left:8px}
+.cuadre-id-badge{font-family:monospace;font-size:13px;font-weight:700;
+  background:rgba(255,255,255,.2);padding:3px 10px;border-radius:4px;margin-left:auto}
+
+/* Main two-column layout */
+.cuadre-layout{display:grid;grid-template-columns:1fr 380px;gap:0;
+  height:calc(100vh - 86px);overflow:hidden}
+
+/* Left: client table */
+.cuadre-left{overflow-y:auto;padding:12px 16px;background:var(--gris)}
+.sec-label{font-size:11px;font-weight:700;text-transform:uppercase;
+  letter-spacing:.8px;color:var(--muted);margin-bottom:6px;margin-top:10px}
+.sec-label:first-child{margin-top:0}
+
+/* Compact totals bar */
+.totales-bar{background:var(--azul);color:white;border-radius:var(--radio);
+  padding:8px 14px;margin-bottom:10px;display:flex;gap:20px;align-items:center}
+.tot-item{text-align:center}
+.tot-val{font-size:16px;font-weight:700}
+.tot-lab{font-size:10px;opacity:.75}
+
+/* Compact client table */
+.cli-table{width:100%;border-collapse:collapse;font-size:12.5px;
+  background:var(--blanco);border-radius:var(--radio);overflow:hidden;
+  box-shadow:0 1px 3px rgba(0,0,0,.08)}
+.cli-table thead tr{background:var(--azul);color:white}
+.cli-table thead th{padding:6px 8px;font-size:11px;font-weight:700;
+  text-transform:uppercase;letter-spacing:.5px;text-align:center;white-space:nowrap}
+.cli-table thead th:nth-child(2){text-align:left}
+.cli-table tbody tr:nth-child(even){background:var(--gris)}
+.cli-table tbody tr:hover{background:var(--celeste)}
+.cli-table tbody tr.diff-row{border-left:3px solid var(--rojo)}
+.cli-table tbody tr.ok-row{border-left:3px solid var(--verde)}
+.cli-table tbody tr.cred-row{border-left:3px solid var(--azul2)}
+.cli-table tbody td{padding:4px 8px;border-bottom:.5px solid var(--gris2);vertical-align:middle}
+.cli-table tfoot tr{background:var(--azul);color:white}
+.cli-table tfoot td{padding:6px 8px;font-weight:700;font-size:12px;text-align:center}
+.cli-table tfoot td:nth-child(2){text-align:left}
+
+/* Inline input fields in table */
+.tbl-input{font-size:13px;padding:3px 6px;border:1.5px solid var(--borde);
+  border-radius:4px;background:white;color:var(--texto);outline:none;
+  width:100%;text-align:center;font-family:inherit}
+.tbl-input:focus{border-color:var(--azul2)}
+.tbl-input.diff-neg{border-color:var(--rojo);background:var(--rojo-bg);color:var(--rojo)}
+.tbl-input.diff-ok{border-color:var(--verde);background:var(--verde-bg);color:var(--verde)}
+.tbl-select{font-size:12px;padding:3px 4px;border:1.5px solid var(--borde);
+  border-radius:4px;background:white;color:var(--texto);outline:none;width:100%}
+.tbl-obs{font-size:12px;padding:3px 6px;border:1.5px solid var(--borde);
+  border-radius:4px;background:white;color:var(--texto);outline:none;width:100%}
+.dif-pill{font-size:10px;font-weight:700;padding:1px 6px;border-radius:10px;display:inline-block}
+.dif-ok{background:var(--verde-bg);color:var(--verde)}
+.dif-neg{background:var(--rojo-bg);color:var(--rojo)}
+.dif-neu{background:var(--gris2);color:var(--muted)}
+.tag-sm{font-size:9px;font-weight:700;padding:1px 5px;border-radius:10px}
+.tag-cred{background:var(--verde-bg);color:var(--verde)}
+.tag-ncf{background:#ede9fe;color:#4c1d95}
+/* Payment type mini buttons */
+.pago-mini{display:flex;gap:3px}
+.pago-mini-btn{flex:1;padding:3px 2px;border:1.5px solid var(--borde);border-radius:4px;
+  background:var(--gris);font-size:10px;font-weight:700;color:var(--muted);
+  cursor:pointer;text-align:center;line-height:1.2}
+.pago-mini-btn.sel-ef{background:#166534;border-color:#166534;color:white}
+.pago-mini-btn.sel-tr{background:#1565c0;border-color:#1565c0;color:white}
+.pago-mini-btn.sel-cr{background:#92400e;border-color:#92400e;color:white}
+
+/* Right sidebar */
+.cuadre-right{background:var(--blanco);border-left:1px solid var(--borde);
+  overflow-y:auto;display:flex;flex-direction:column}
+.sidebar-section{padding:12px 14px;border-bottom:1px solid var(--gris2)}
+.sidebar-title{font-size:12px;font-weight:700;text-transform:uppercase;
+  letter-spacing:.8px;color:var(--azul);margin-bottom:8px}
+.sidebar-row{display:flex;justify-content:space-between;align-items:center;
+  padding:4px 0;border-bottom:.5px solid var(--gris2);font-size:13px}
+.sidebar-row:last-child{border:none}
+.sidebar-row label{color:var(--muted);font-size:12px}
+.sidebar-input{font-size:13px;padding:3px 7px;border:1.5px solid var(--borde);
+  border-radius:5px;background:var(--gris);color:var(--texto);outline:none;
+  width:120px;text-align:right;font-family:inherit}
+.sidebar-input:focus{border-color:var(--azul2);background:white}
+.sidebar-input.readonly{background:var(--celeste);color:var(--azul);font-weight:700;border-color:var(--celeste)}
+
+/* Pago summary boxes */
+.pago-summary{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-bottom:6px}
+.pago-box{border-radius:6px;padding:7px 6px;text-align:center}
+.pago-box-ef{background:var(--verde-bg)}
+.pago-box-tr{background:var(--celeste)}
+.pago-box-cr{background:var(--ambar-bg)}
+.pago-box-val{font-size:15px;font-weight:700}
+.pago-box-ef .pago-box-val{color:var(--verde)}
+.pago-box-tr .pago-box-val{color:var(--azul2)}
+.pago-box-cr .pago-box-val{color:var(--ambar)}
+.pago-box-lab{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;margin-top:2px}
+.pago-box-ef .pago-box-lab{color:var(--verde)}
+.pago-box-tr .pago-box-lab{color:var(--azul2)}
+.pago-box-cr .pago-box-lab{color:var(--ambar)}
+.pago-box-sub{font-size:10px;margin-top:1px;opacity:.8}
+
+/* Resumen rows */
+.res-row{display:flex;justify-content:space-between;padding:4px 0;
+  border-bottom:.5px solid var(--gris2);font-size:12.5px}
+.res-row:last-child{border:none}
+.res-row.total{font-weight:700;font-size:14px;padding-top:6px}
+.res-row.diff-ok{color:var(--verde);font-weight:700}
+.res-row.diff-neg{color:var(--rojo);font-weight:700}
+
+/* Zona table */
+.zona-table{width:100%;border-collapse:collapse;font-size:11.5px}
+.zona-table thead tr{background:var(--azul);color:white}
+.zona-table thead th{padding:4px 6px;font-size:10px;font-weight:700;
+  text-transform:uppercase;text-align:center}
+.zona-table thead th:first-child{text-align:left}
+.zona-table tbody tr:nth-child(even){background:var(--gris)}
+.zona-table tbody td{padding:4px 6px;border-bottom:.5px solid var(--gris2);text-align:center}
+.zona-table tbody td:first-child{text-align:left;font-weight:600}
+.zona-table tfoot tr{background:var(--azul);color:white}
+.zona-table tfoot td{padding:4px 6px;font-weight:700;font-size:11px;text-align:center}
+.zona-table tfoot td:first-child{text-align:left}
+.prom-pill{display:inline-block;background:var(--celeste);color:var(--azul);
+  font-size:10px;font-weight:700;padding:1px 6px;border-radius:10px}
+.prom-pill.diff{background:var(--ambar-bg);color:var(--ambar)}
+
+/* Action buttons in sidebar */
+.sidebar-actions{padding:12px 14px;margin-top:auto;border-top:2px solid var(--azul);
+  display:flex;flex-direction:column;gap:7px;position:sticky;bottom:0;background:white}
+.btn-action{padding:10px 14px;border:none;border-radius:var(--radio);
+  font-size:14px;font-weight:700;cursor:pointer;transition:transform .1s;width:100%}
+.btn-action:active{transform:scale(.98)}
+.btn-save{background:var(--azul);color:white}
+.btn-export{background:#166534;color:white}
+.btn-back-lnk{background:var(--gris2);color:var(--texto);font-size:13px}
+
+/* Modal */
+.modal-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:400;
+  align-items:center;justify-content:center}
+.modal-bg.open{display:flex}
+.modal{background:white;border-radius:12px;padding:24px;width:600px;max-height:80vh;
+  overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.25)}
+.modal-title{font-size:16px;font-weight:700;margin-bottom:4px}
+.modal-sub{font-size:13px;color:var(--muted);margin-bottom:14px}
+.modal-cancel{text-align:center;padding:12px;color:var(--muted);font-size:13px;cursor:pointer;margin-top:4px}
+
+/* Toast */
+.toast{position:fixed;bottom:20px;right:20px;transform:translateY(80px);
+  background:#1e293b;color:white;padding:10px 20px;border-radius:8px;
+  font-size:13px;font-weight:600;transition:transform .3s;z-index:500;pointer-events:none}
+.toast.show{transform:translateY(0)}
+
+/* Misc */
+input[type="text"],input[type="number"],select{
+  font-size:13px;padding:6px 10px;border:1.5px solid var(--borde);
+  border-radius:6px;background:var(--gris);color:var(--texto);
+  appearance:none;-webkit-appearance:none;outline:none}
+input:focus,select:focus{border-color:var(--azul2);background:white}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div><div class="topbar-title">💧 Villar & Villar Logistics — Cuadre de Camiones</div>
+  <div class="topbar-sub" id="top-sub"></div></div>
+  <button id="btn-ref" onclick="cargarDatos()" style="background:rgba(255,255,255,.2);border:none;color:white;padding:6px 14px;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer">⟳ Actualizar</button>
+</div>
+
+<!-- PANTALLA 1: DASHBOARD -->
+<div class="screen active" id="screen-dashboard">
+  <div class="dash-wrap">
+    <div class="stats-row">
+      <div class="stat"><div class="stat-v" id="st-prev">0</div><div class="stat-l">Preventas en bin</div></div>
+      <div class="stat"><div class="stat-v" id="st-cli">0</div><div class="stat-l">Clientes totales</div></div>
+      <div class="stat"><div class="stat-v" id="st-caj">0</div><div class="stat-l">Cajas totales</div></div>
+      <div class="stat"><div class="stat-v" id="st-sin" style="color:var(--rojo)">0</div><div class="stat-l">Sin asignar</div></div>
+    </div>
+    <div id="alerta" style="display:none" class="alert"></div>
+    <div class="cam-grid" id="dashboard-list"></div>
+  </div>
+</div>
+
+<!-- PANTALLA 2: CUADRE DE CAMION — PC LAYOUT -->
+<div class="screen" id="screen-cuadre">
+  <!-- Sub-topbar -->
+  <div class="cuadre-topbar">
+    <button class="back-btn" onclick="volverDashboard()">‹</button>
+    <div>
+      <span class="cuadre-title" id="cuadre-title">Cuadre</span>
+      <span class="cuadre-sub" id="cuadre-sub"></span>
+    </div>
+    <span class="cuadre-id-badge" id="cuadre-id-badge"></span>
+  </div>
+
+  <!-- Two-column layout -->
+  <div class="cuadre-layout">
+
+    <!-- LEFT: client table -->
+    <div class="cuadre-left">
+      <!-- Totales bar -->
+      <div class="totales-bar">
+        <div style="font-size:13px;font-weight:700;margin-right:6px">Totales:</div>
+        <div class="tot-item"><div class="tot-val" id="tot-prev-v">0</div><div class="tot-lab">Prev V</div></div>
+        <div class="tot-item"><div class="tot-val" id="tot-real-v" style="color:#86efac">0</div><div class="tot-lab">Real V</div></div>
+        <div style="width:1px;background:rgba(255,255,255,.2);height:30px;margin:0 4px"></div>
+        <div class="tot-item"><div class="tot-val" id="tot-prev-p">0</div><div class="tot-lab">Prev P</div></div>
+        <div class="tot-item"><div class="tot-val" id="tot-real-p" style="color:#86efac">0</div><div class="tot-lab">Real P</div></div>
+        <div style="width:1px;background:rgba(255,255,255,.2);height:30px;margin:0 4px"></div>
+        <div class="tot-item"><div class="tot-val" id="tot-fact" style="color:#fde68a">$0</div><div class="tot-lab">Facturado</div></div>
+        <div class="tot-item"><div class="tot-val" id="tot-real-d" style="color:#86efac">$0</div><div class="tot-lab">Real $</div></div>
+      </div>
+
+      <!-- Compact client table -->
+      <table class="cli-table" id="cli-table">
+        <thead><tr>
+          <th style="width:28px">#</th>
+          <th style="text-align:left;min-width:140px">Cliente</th>
+          <th style="width:50px">Zona</th>
+          <th style="width:70px">V Prev</th>
+          <th style="width:70px">V Real</th>
+          <th style="width:60px">P Prev</th>
+          <th style="width:60px">P Real</th>
+          <th style="width:80px">Cobrado $</th>
+          <th style="width:120px">Tipo cobro</th>
+          <th style="width:70px">Estado</th>
+          <th style="min-width:120px">Observación</th>
+        </tr></thead>
+        <tbody id="clientes-cuadre"></tbody>
+        <tfoot><tr>
+          <td colspan="2">TOTALES</td>
+          <td>—</td>
+          <td id="tf-prev-v">0</td>
+          <td id="tf-real-v">0</td>
+          <td id="tf-prev-p">0</td>
+          <td id="tf-real-p">0</td>
+          <td id="tf-cobrado">$0</td>
+          <td colspan="3"></td>
+        </tr></tfoot>
+      </table>
+    </div>
+
+    <!-- RIGHT: sidebar panels -->
+    <div class="cuadre-right">
+
+      <!-- Gastos -->
+      <div class="sidebar-section">
+        <div class="sidebar-title">💵 Cajas & Efectivo</div>
+        <div class="sidebar-row"><label>Sobrante día anterior</label><input class="sidebar-input" id="g-anterior" type="number" placeholder="0" inputmode="numeric" oninput="recalcResumen()"></div>
+        <div class="sidebar-row"><label>+ Cajas cargadas hoy</label><input class="sidebar-input" id="g-cargadas" type="number" placeholder="0" inputmode="numeric" oninput="recalcResumen()"></div>
+        <div class="sidebar-row"><label>= Total disponible</label><input class="sidebar-input readonly" id="g-disponible" readonly></div>
+        <div class="sidebar-row"><label>Sobrante físico (regreso)</label><input class="sidebar-input" id="g-sobrante" type="number" placeholder="0" inputmode="numeric" oninput="recalcResumen()"></div>
+        <div class="sidebar-row"><label>Efectivo recibido $</label><input class="sidebar-input" id="g-efectivo" type="number" placeholder="0" inputmode="numeric" oninput="recalcResumen()"></div>
+        <div class="sidebar-row"><label>Pendientes / Créditos</label><input class="sidebar-input" id="g-creditos" type="number" placeholder="0" inputmode="numeric" oninput="recalcResumen()"></div>
+      </div>
+
+      <!-- Gastos ruta -->
+      <div class="sidebar-section">
+        <div class="sidebar-title">📉 Gastos de Ruta</div>
+        <div class="sidebar-row"><label>Pago ayudante</label><input class="sidebar-input" id="g-ayudante" type="number" placeholder="0" oninput="recalcResumen()"></div>
+        <div class="sidebar-row"><label>Combustible</label><input class="sidebar-input" id="g-combustible" type="number" placeholder="0" oninput="recalcResumen()"></div>
+        <div class="sidebar-row"><label>Peaje / Giro</label><input class="sidebar-input" id="g-peaje" type="number" placeholder="0" oninput="recalcResumen()"></div>
+        <div class="sidebar-row"><label>Otros</label><input class="sidebar-input" id="g-otros" type="number" placeholder="0" oninput="recalcResumen()"></div>
+      </div>
+
+      <!-- Pago summary -->
+      <div class="sidebar-section">
+        <div class="sidebar-title">💳 Por tipo de cobro</div>
+        <div id="pago-summary-cont">
+          <div style="font-size:12px;color:var(--muted);text-align:center;padding:6px">Llena el cuadre...</div>
+        </div>
+        <div class="sidebar-row" style="margin-top:6px"><label>Efectivo a recibir</label><span id="r-ef-neto" style="color:var(--verde);font-weight:700;font-size:13px">$0</span></div>
+        <div class="sidebar-row"><label>Transferencias</label><span id="r-tr-neto" style="color:var(--azul2);font-weight:700;font-size:13px">$0</span></div>
+        <div class="sidebar-row"><label>Créditos (pendiente)</label><span id="r-cr-neto" style="color:var(--ambar);font-weight:700;font-size:13px">$0</span></div>
+      </div>
+
+      <!-- Resultado -->
+      <div class="sidebar-section">
+        <div class="sidebar-title">📊 Resultado</div>
+        <div class="res-row"><span>Facturado (preventa)</span><span id="r-facturado">$0</span></div>
+        <div class="res-row"><span>Facturado (real entregado)</span><span id="r-real">$0</span></div>
+        <div class="res-row"><span>Efectivo recibido</span><span id="r-efectivo">$0</span></div>
+        <div class="res-row"><span>Total gastos</span><span id="r-gastos">$0</span></div>
+        <div class="res-row total"><span>A entregar a caja</span><span id="r-entregar">$0</span></div>
+        <div class="res-row" id="r-dif-ef-row"><span>Diferencia efectivo</span><span id="r-dif-ef">$0</span></div>
+        <div class="res-row"><span>Total disponible cajas</span><span id="r-disponible">—</span></div>
+        <div class="res-row"><span>Cajas preventa</span><span id="r-caj-prev">0</span></div>
+        <div class="res-row"><span>Cajas reales</span><span id="r-caj-real">0</span></div>
+        <div class="res-row" id="r-dif-caj-row"><span>Diferencia cajas</span><span id="r-dif-caj">0</span></div>
+      </div>
+
+      <!-- Zona resumen -->
+      <div class="sidebar-section">
+        <div class="sidebar-title">🗺 Por zona</div>
+        <div id="zona-resumen"><div style="font-size:12px;color:var(--muted);text-align:center;padding:6px">Llena el cuadre...</div></div>
+      </div>
+
+      <!-- Sticky action buttons -->
+      <div class="sidebar-actions">
+        <button class="btn-action btn-save" onclick="guardarCuadre()">💾 Guardar cuadre</button>
+        <button class="btn-action btn-export" onclick="exportarExcel()">📊 Exportar para Excel</button>
+        <button class="btn-action btn-back-lnk" onclick="volverDashboard()">‹ Volver al listado</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const JKEY='$2a$10$q4eNs6WXxS3oXb25mIeINuoiZaCd69ruJI.IZhZGcstCRL4xDOPfu';
+const JBIN='69e249f336566621a8c3c97c';
+const JURL='https://api.jsonbin.io/v3/b/'+JBIN;
+
+async function leerBin(){
+  let r;
+  try{
+    r=await fetch(JURL+'/latest',{headers:{'X-Master-Key':JKEY}});
+  }catch(netErr){
+    throw new Error('Sin conexión a internet: '+netErr.message);
+  }
+  if(r.status===401) throw new Error('API Key incorrecta (401) — verificar en jsonbin.io');
+  if(r.status===404) throw new Error('Bin ID no encontrado (404) — verificar en jsonbin.io');
+  if(!r.ok) throw new Error('Error del servidor: HTTP '+r.status);
+  const j=await r.json();
+  if(!j.record) throw new Error('Respuesta vacía del servidor — el bin puede estar vacío');
+  return j.record;
+}
+async function escribirBin(d){
+  const r=await fetch(JURL,{method:'PUT',headers:{'Content-Type':'application/json','X-Master-Key':JKEY},body:JSON.stringify(d)});
+  if(!r.ok) throw new Error(r.status);
+}
+
+let subs={}, cams=[], asig={}, cuadres={};
+let binData={};
+let activeCamId=null;
+// cuadreLocal: { clienteIdx: {realCajas, realProm, cobrado, obs}, gastos:{...}, cargadas, sobrante, efectivo, creditos }
+let cuadreLocal={};
+
+window.addEventListener('DOMContentLoaded',()=>{
+  const h=new Date();
+  const M=['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+  document.getElementById('top-sub').textContent='Villar · '+h.getDate()+'/'+M[h.getMonth()]+'/'+h.getFullYear();
+  cargarDatos();
+});
+
+async function cargarDatos(){
+  const btn=document.getElementById('btn-ref');
+  const cont=document.getElementById('dashboard-list');
+  btn.textContent='⟳ ...';
+  cont.innerHTML='<div style="text-align:center;padding:40px 20px;color:var(--muted)">'+
+    '<div style="font-size:28px;margin-bottom:10px">⟳</div>Conectando con el servidor...</div>';
+  try{
+    binData = await leerBin();
+    subs    = binData.pedidos      || {};
+    asig    = binData.asignaciones || {};
+    cams    = binData.camiones      || [];
+    cuadres = binData.cuadres       || {};
+
+    // Diagnostic: show what was loaded
+    const nSubs = Object.keys(subs).length;
+    const nCams = cams.length;
+    const nAsig = Object.keys(asig).length;
+    console.log(`Cargado: ${nSubs} preventas, ${nCams} camiones, ${nAsig} asignaciones`);
+
+    btn.textContent='⟳ Actualizar';
+    // Show brief success if nothing to display
+    renderDashboard();
+    // If dashboard is empty, show diagnostic hint
+    const activeCams=cams.filter(cam=>Object.keys(asig).some(k=>asig[k]===cam.id));
+    if(activeCams.length===0 && Object.keys(subs).length===0){
+      const hint=document.createElement('div');
+      hint.style.cssText='margin:8px 12px;padding:10px 14px;background:var(--celeste);border-radius:10px;font-size:12px;color:var(--azul)';
+      hint.innerHTML='<strong>ℹ Bin conectado correctamente.</strong> No hay asignaciones aún. '+
+        'El encargado debe finalizar las asignaciones en la app de encargado para que aparezcan aquí.'+
+        '<br><span style="opacity:.7">Preventas en bin: '+Object.keys(subs).length+
+        ' | Camiones: '+cams.length+
+        ' | Asignaciones: '+Object.keys(asig).length+'</span>';
+      const dashList=document.getElementById('dashboard-list');
+      if(dashList) dashList.appendChild(hint);
+    }
+
+  }catch(e){
+    console.error('Error cargando datos:', e);
+    btn.textContent='⟳ Reintentar';
+    // Show detailed error in dashboard area
+    const isNetworkErr = e.message && (e.message.includes('fetch') || e.message.includes('network') || e.message.includes('Failed'));
+    cont.innerHTML=`
+      <div style="margin:16px;background:#fee2e2;border-radius:12px;padding:20px;border-left:4px solid #991b1b">
+        <div style="font-size:16px;font-weight:700;color:#991b1b;margin-bottom:8px">⚠ Error al cargar datos</div>
+        <div style="font-size:13px;color:#7f1d1d;margin-bottom:12px">${e.message||'Error desconocido'}</div>
+        <div style="font-size:12px;color:#991b1b;background:#fef2f2;border-radius:8px;padding:10px;margin-bottom:12px">
+          <strong>Posibles causas:</strong><br>
+          • Sin conexión a internet<br>
+          • Clave de JSONBin expirada o incorrecta<br>
+          • El bin fue eliminado o es inaccesible<br>
+          • JSONBin está caído (revisar jsonbin.io)
+        </div>
+        <button onclick="cargarDatos()" style="width:100%;padding:12px;background:#991b1b;color:white;border:none;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer">
+          ⟳ Intentar de nuevo
+        </button>
+      </div>
+      <div style="margin:0 16px">
+        <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);padding:8px 0 4px">Diagnóstico de conexión</div>
+        <div id="diag-result" style="background:var(--gris);border-radius:8px;padding:12px;font-size:12px;font-family:monospace;color:var(--texto)">Ejecutando prueba...</div>
+      </div>`;
+    // Run connection test
+    diagnosticarConexion();
+  }
+}
+
+async function diagnosticarConexion(){
+  const el=document.getElementById('diag-result');
+  if(!el) return;
+  let log='';
+  try{
+    log+='[1] Probando conexión a internet...\n';
+    el.textContent=log;
+    const t1=Date.now();
+    const r=await fetch('https://api.jsonbin.io/v3/b/'+JBIN+'/latest',
+      {headers:{'X-Master-Key':JKEY}});
+    const ms=Date.now()-t1;
+    log+=`[2] Respuesta HTTP: ${r.status} (${ms}ms)\n`;
+    el.textContent=log;
+    if(r.status===200){
+      const j=await r.json();
+      const keys=Object.keys(j.record||{});
+      log+=`[3] ✓ Bin accesible. Claves raíz: ${keys.join(', ')||'(vacío)'}\n`;
+      log+=`    pedidos: ${Object.keys(j.record?.pedidos||{}).length}\n`;
+      log+=`    camiones: ${(j.record?.camiones||[]).length}\n`;
+      log+=`    asignaciones: ${Object.keys(j.record?.asignaciones||{}).length}\n`;
+      log+=`    cuadres: ${Object.keys(j.record?.cuadres||{}).length}\n`;
+      log+='[4] Datos cargados correctamente. Recargando...';
+      el.textContent=log;
+      setTimeout(()=>cargarDatos(),1500);
+    } else if(r.status===401){
+      log+='[3] ✗ Error 401: API Key incorrecta o expirada.\n';
+      log+='    Verificar la clave en jsonbin.io → Account → API Keys';
+    } else if(r.status===404){
+      log+='[3] ✗ Error 404: Bin ID no encontrado.\n';
+      log+='    Verificar el Bin ID en jsonbin.io';
+    } else {
+      log+=`[3] ✗ Error inesperado: ${r.status}`;
+    }
+  }catch(err){
+    log+=`[2] ✗ Sin conexión o error de red: ${err.message}\n`;
+    log+='    Verifica que el dispositivo tiene internet activo.';
+  }
+  if(el) el.textContent=log;
+}
+
+async function guardarBin(){
+  binData.cuadres = cuadres;
+  await escribirBin(binData);
+}
+
+/* ── DASHBOARD ── */
+function renderDashboard(){
+  const cont=document.getElementById('dashboard-list');
+  // Find cams that have assigned clients
+  const activeCams = cams.filter(cam=>{
+    return Object.keys(asig).some(k=>asig[k]===cam.id);
+  });
+
+  if(!activeCams.length){
+    cont.innerHTML=`<div class="empty"><div class="empty-icon">🚛</div>
+      <div style="font-size:15px;font-weight:600;margin-bottom:6px">Sin asignaciones aún</div>
+      <div style="font-size:13px">El encargado debe finalizar las asignaciones<br>del día para que aparezcan aquí</div>
+    </div>`;
+    return;
+  }
+
+  cont.innerHTML = activeCams.map(cam=>{
+    const items=getItemsCam(cam.id);
+    const totPrevV=items.reduce((a,x)=>a+x.p.cajas,0);
+    const totPrevP=items.reduce((a,x)=>a+x.p.promo,0);
+    const totPrevD=items.reduce((a,x)=>a+x.p.total,0);
+    const cq=cuadres[cam.id]||{};
+    const hasCuadre=Object.keys(cq).length>0;
+
+    // Status
+    let statusClass='badge-pending', statusText='Pendiente';
+    if(hasCuadre){
+      const difEf = calcDifEf(cam.id, cq);
+      const difCaj = calcDifCaj(cam.id, cq);
+      if(difEf===0 && difCaj===0){statusClass='badge-done';statusText='✓ Cuadrado';}
+      else{statusClass='badge-diff';statusText=`⚠ Diferencias`;}
+    }
+
+    const numAsig = cam.asignacionId || '—';
+    const fechaStr = cam.fechaAsignacion ? fmtFecha(cam.fechaAsignacion) : '—';
+
+    return`<div class="cam-card" onclick="abrirCuadre('${cam.id}')">
+      <div class="cam-card-head">
+        <span class="cam-icon">🚛</span>
+        <div class="cam-info">
+          <div class="cam-name">${esc(cam.nombre)}</div>
+          <div class="cam-chofer">${esc(cam.chofer)}</div>
+          <div class="cam-id"># ${numAsig}</div>
+        </div>
+        <div class="cam-stats">
+          <div class="cam-stat-big">${totPrevV+totPrevP}</div>
+          <div class="cam-stat-sub">cajas · ${items.length} clientes</div>
+          <div><span class="status-badge ${statusClass}">${statusText}</span></div>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function getItemsCam(camId){
+  const items=[];
+  Object.keys(subs).forEach(sid=>{
+    subs[sid].pedidos.forEach((p,i)=>{
+      if(asig[sid+'__'+i]===camId) items.push({p,zona:subs[sid].zona,sid,pi:i});
+    });
+  });
+  return items;
+}
+
+function calcDifEf(camId, cq){
+  const items=getItemsCam(camId);
+  const totReal=items.reduce((a,x,i)=>{
+    const ci=cq['c'+i]||{};
+    const real=ci.realCajas!==undefined?ci.realCajas:x.p.cajas;
+    const pr=ci.precio!==undefined?ci.precio:x.p.precio;
+    return a+(real*pr);
+  },0);
+  const ef=+(cq.gastos?.efectivo||0);
+  const gastos=(+(cq.gastos?.ayudante||0))+(+(cq.gastos?.combustible||0))+(+(cq.gastos?.peaje||0))+(+(cq.gastos?.otros||0));
+  const cred=+(cq.gastos?.creditos||0);
+  return ef - totReal + gastos + cred;
+}
+
+function calcDifCaj(camId, cq){
+  const items=getItemsCam(camId);
+  const anterior=+(cq.gastos?.anterior||0);
+  const cargadas=+(cq.gastos?.cargadas||0);
+  const disponible=anterior+cargadas;
+  const sobrante=+(cq.gastos?.sobrante||0);
+  const totRealC=items.reduce((a,x,i)=>{
+    const ci=cq['c'+i]||{};
+    return a+(ci.realCajas!==undefined?ci.realCajas:x.p.cajas)+(ci.realProm!==undefined?ci.realProm:x.p.promo);
+  },0);
+  if(!disponible) return 0;
+  return disponible - totRealC - sobrante;
+}
+
+/* ── CUADRE ── */
+function abrirCuadre(camId){
+  activeCamId=camId;
+  const cam=cams.find(c=>c.id===camId);
+  if(!cam){showToast('Camión no encontrado');return;}
+  cuadreLocal=JSON.parse(JSON.stringify(cuadres[camId]||{}));
+
+  document.getElementById('cuadre-title').textContent=cam.nombre+' — '+esc(cam.chofer);
+  document.getElementById('cuadre-sub').textContent='# '+(cam.asignacionId||'—')+' · '+(cam.fechaAsignacion?fmtFecha(cam.fechaAsignacion):'—');
+
+  const g=cuadreLocal.gastos||{};
+  document.getElementById('g-ayudante').value   = g.ayudante   ||'';
+  document.getElementById('g-combustible').value= g.combustible||'';
+  document.getElementById('g-peaje').value      = g.peaje      ||'';
+  document.getElementById('g-otros').value      = g.otros      ||'';
+  document.getElementById('g-anterior').value   = g.anterior   ||'';
+  document.getElementById('g-cargadas').value   = g.cargadas   ||'';
+  document.getElementById('g-sobrante').value   = g.sobrante   ||'';
+  document.getElementById('g-efectivo').value   = g.efectivo   ||'';
+  document.getElementById('g-creditos').value   = g.creditos   ||'';
+
+  renderClientesCuadre(camId);
+  recalcResumen();
+  renderZonaResumen();
+  renderPagoSummary();
+  mostrarScreen('cuadre');
+  window.scrollTo(0,0);
+}
+
+function renderClientesCuadre(camId){
+  const items=getItemsCam(camId);
+  const tbody=document.getElementById('clientes-cuadre');
+  tbody.innerHTML=items.map((x,i)=>{
+    const {p}=x;
+    const ci=cuadreLocal['c'+i]||{};
+    const realCajas=ci.realCajas!==undefined?ci.realCajas:p.cajas;
+    const realProm=ci.realProm!==undefined?ci.realProm:p.promo;
+    const cobrado=ci.cobrado!==undefined?ci.cobrado:'';
+    const obs=ci.obs||'';
+    const difCaj=realCajas-p.cajas;
+    const difProm=realProm-p.promo;
+    const tipoPago=ci.tipoPago||'efectivo';
+    let rowClass='';
+    if(p.credito) rowClass='cred-row';
+    else if(difCaj!==0||difProm!==0) rowClass='diff-row';
+    else if(realCajas===p.cajas&&realProm===p.promo) rowClass='ok-row';
+    const difVpill=difCaj===0?'<span class="dif-pill dif-ok">=</span>'
+      :(difCaj>0?`<span class="dif-pill dif-ok">+${difCaj}</span>`
+               :`<span class="dif-pill dif-neg">${difCaj}</span>`);
+    const difPpill=difProm===0?'<span class="dif-pill dif-ok">=</span>'
+      :(difProm>0?`<span class="dif-pill dif-ok">+${difProm}</span>`
+                :`<span class="dif-pill dif-neg">${difProm}</span>`);
+    const flags=(p.credito?'<span class="tag-sm tag-cred">CR</span> ':'')
+               +(p.ncf?'<span class="tag-sm tag-ncf">NCF</span>':'');
+    return `<tr class="${rowClass}" id="cc-${i}">
+      <td style="text-align:center;font-size:11px;color:var(--muted)">${i+1}</td>
+      <td${p.nota?' title="'+esc(p.nota)+'" style="cursor:help"':''}><strong>${esc(p.cliente)}</strong>${flags?'<br>'+flags:''}
+        <div style="font-size:10px;color:var(--muted)">$${p.precio}/cj · prev $${fmt(p.total)}</div></td>
+      <td style="text-align:center;font-size:11px">${esc(x.zona||'')}</td>
+      <td style="text-align:center;font-weight:700">${p.cajas}</td>
+      <td><input class="tbl-input${difCaj<0?' diff-neg':difCaj>0?' diff-ok':''}"
+        type="number" min="0" value="${realCajas}" id="rc-${i}"
+        oninput="updateCliente(${i},'realCajas',+this.value)" style="width:50px">
+        ${difVpill}</td>
+      <td style="text-align:center;font-weight:700">${p.promo}</td>
+      <td><input class="tbl-input${difProm<0?' diff-neg':difProm>0?' diff-ok':''}"
+        type="number" min="0" value="${realProm}" id="rp-${i}"
+        oninput="updateCliente(${i},'realProm',+this.value)" style="width:42px">
+        ${difPpill}</td>
+      <td><input class="tbl-input" type="number" min="0" value="${cobrado}" id="cb-${i}"
+        placeholder="${p.credito?'CR':p.total}"
+        oninput="updateCliente(${i},'cobrado',+this.value)" style="width:70px"></td>
+      <td><div class="pago-mini">
+        <div class="pago-mini-btn${tipoPago==='efectivo'?' sel-ef':''}" id="tp-ef-${i}" onclick="setTipoPago(${i},'efectivo')">💵</div>
+        <div class="pago-mini-btn${tipoPago==='transferencia'?' sel-tr':''}" id="tp-tr-${i}" onclick="setTipoPago(${i},'transferencia')">🏦</div>
+        <div class="pago-mini-btn${tipoPago==='credito'?' sel-cr':''}" id="tp-cr-${i}" onclick="setTipoPago(${i},'credito')">📋</div>
+      </div></td>
+      <td><select class="tbl-select" id="st-${i}" onchange="updateCliente(${i},'estado',this.value)">
+        <option value="entregado" ${(ci.estado||'entregado')==='entregado'?'selected':''}>✓ OK</option>
+        <option value="parcial" ${ci.estado==='parcial'?'selected':''}>⚠ Parcial</option>
+        <option value="devuelto" ${ci.estado==='devuelto'?'selected':''}>↩ No</option>
+      </select></td>
+      <td><input type="text" class="tbl-obs" placeholder="Nota..." value="${esc(obs)}" id="ob-${i}"
+        oninput="updateCliente(${i},'obs',this.value)"></td>
+    </tr>`;
+  }).join('');
+  recalcTotales(items);
+}
+
+function updateCliente(i, field, val){
+  if(!cuadreLocal['c'+i]) cuadreLocal['c'+i]={};
+  cuadreLocal['c'+i][field]=val;
+
+  // Update dif indicators
+  const items=getItemsCam(activeCamId);
+  if(items[i]){
+    const p=items[i].p;
+    const ci=cuadreLocal['c'+i];
+    if(field==='realCajas'){
+      const dif=(ci.realCajas||0)-p.cajas;
+      const el=document.getElementById('dif-v-'+i);
+      if(el){el.textContent=dif===0?'= Igual':dif>0?'+ '+dif:''+dif;el.className='campo-dif '+(dif===0?'ok':dif>0?'ok':'neg');}
+    }
+    if(field==='realProm'){
+      const dif=(ci.realProm||0)-p.promo;
+      const el=document.getElementById('dif-p-'+i);
+      if(el){el.textContent=dif===0?'= Igual':dif>0?'+ '+dif:''+dif;el.className='campo-dif '+(dif===0?'ok':dif>0?'ok':'neg');}
+    }
+  }
+  recalcTotales(items);
+  recalcResumen();
+}
+
+function recalcTotales(items){
+  let prevV=0,prevP=0,realV=0,realP=0,prevD=0,realD=0,cobrado=0;
+  items.forEach((x,i)=>{
+    prevV+=x.p.cajas; prevP+=x.p.promo; prevD+=x.p.total;
+    const ci=cuadreLocal['c'+i]||{};
+    const rV=ci.realCajas!==undefined?ci.realCajas:x.p.cajas;
+    const rP=ci.realProm!==undefined?ci.realProm:x.p.promo;
+    realV+=rV; realP+=rP; realD+=rV*x.p.precio;
+    cobrado+=+(ci.cobrado||0);
+  });
+  const s=(id,v)=>{const e=document.getElementById(id);if(e)e.textContent=v;};
+  s('tot-prev-v',prevV); s('tot-prev-p',prevP);
+  s('tot-real-v',realV); s('tot-real-p',realP);
+  s('tot-fact','$'+fmt(prevD)); s('tot-real-d','$'+fmt(realD));
+  s('tf-prev-v',prevV); s('tf-real-v',realV);
+  s('tf-prev-p',prevP); s('tf-real-p',realP);
+  s('tf-cobrado','$'+fmt(cobrado));
+}
+
+function recalcResumen(){
+  const items=getItemsCam(activeCamId);
+  let totPrevD=0, totRealD=0;
+  items.forEach((x,i)=>{
+    totPrevD+=x.p.total;
+    const ci=cuadreLocal['c'+i]||{};
+    const rC=ci.realCajas!==undefined?ci.realCajas:x.p.cajas;
+    totRealD+=rC*x.p.precio;
+  });
+
+  const ayudante   =+(document.getElementById('g-ayudante').value)||0;
+  const combustible=+(document.getElementById('g-combustible').value)||0;
+  const peaje      =+(document.getElementById('g-peaje').value)||0;
+  const otros      =+(document.getElementById('g-otros').value)||0;
+  const anterior   =+(document.getElementById('g-anterior').value)||0;
+  const cargadas   =+(document.getElementById('g-cargadas').value)||0;
+  const disponible = anterior+cargadas;
+  const dispEl=document.getElementById('g-disponible');if(dispEl)dispEl.value=disponible||'';
+  const sobrante   =+(document.getElementById('g-sobrante').value)||0;
+  const efectivo   =+(document.getElementById('g-efectivo').value)||0;
+  const creditos   =+(document.getElementById('g-creditos').value)||0;
+
+  const gastos=ayudante+combustible+peaje+otros;
+
+  // Compute pago breakdown from client data
+  const items2=getItemsCam(activeCamId);
+  let sumEf=0,sumTr=0,sumCr=0;
+  items2.forEach((x,i2)=>{
+    const ci2=cuadreLocal['c'+i2]||{};
+    const rV2=ci2.realCajas!==undefined?ci2.realCajas:x.p.cajas;
+    const rD2=rV2*x.p.precio;
+    const tipo=ci2.tipoPago||'efectivo';
+    if(tipo==='transferencia') sumTr+=rD2;
+    else if(tipo==='credito')  sumCr+=rD2;
+    else                       sumEf+=rD2;
+  });
+  setText('r-ef-neto','$'+fmt(sumEf));
+  setText('r-tr-neto','$'+fmt(sumTr));
+  setText('r-cr-neto','$'+fmt(sumCr));
+
+  const entregar=efectivo-gastos;
+  const difEf=efectivo-(sumEf)+gastos;
+
+  let totRealV=0,totRealP=0;
+  items.forEach((x,i)=>{
+    const ci=cuadreLocal['c'+i]||{};
+    totRealV+=ci.realCajas!==undefined?ci.realCajas:x.p.cajas;
+    totRealP+=ci.realProm!==undefined?ci.realProm:x.p.promo;
+  });
+  const difCaj=disponible?(disponible-(totRealV+totRealP)-sobrante):0;
+
+  setText('r-facturado','$'+fmt(totPrevD));
+  setText('r-real','$'+fmt(totRealD));
+  setText('r-efectivo','$'+fmt(efectivo));
+  setText('r-gastos','$'+fmt(gastos));
+  setText('r-creditos','$'+fmt(creditos));
+  setText('r-entregar','$'+fmt(entregar));
+  setText('r-dif-ef','$'+fmt(difEf));
+  setText('r-disponible',disponible||'—');
+  setText('r-caj-prev',items.reduce((a,x)=>a+x.p.cajas+x.p.promo,0));
+  setText('r-caj-real',totRealV+totRealP);
+  setText('r-dif-caj',cargadas?difCaj:'—');
+
+  const dRow=document.getElementById('r-dif-ef-row');
+  dRow.className='resumen-row '+(difEf===0?'diff-ok':difEf!==0?'diff-neg':'');
+  const cRow=document.getElementById('r-dif-caj-row');
+  cRow.className='resumen-row '+(cargadas&&difCaj===0?'diff-ok':cargadas&&difCaj!==0?'diff-neg':'');
+
+  // Save gastos to local
+  cuadreLocal.gastos={ayudante,combustible,peaje,otros,anterior,cargadas,sobrante,efectivo,creditos};
+  renderZonaResumen();
+  renderPagoSummary();
+}
+
+async function guardarCuadre(){
+  if(!activeCamId) return;
+  cuadres[activeCamId]=JSON.parse(JSON.stringify(cuadreLocal));
+  try{
+    await guardarBin();
+    showToast('Cuadre guardado ✓');
+    renderDashboard();
+  }catch(e){showToast('Error al guardar');console.error(e);}
+}
+
+/* ── NAVIGATION ── */
+function mostrarScreen(name){
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.getElementById('screen-'+name).classList.add('active');
+  window.scrollTo(0,0);
+}
+function volverDashboard(){activeCamId=null;mostrarScreen('dashboard');renderDashboard();}
+
+/* ── UTILS ── */
+/* ── TIPO DE PAGO ── */
+function setTipoPago(i, tipo){
+  if(!cuadreLocal['c'+i]) cuadreLocal['c'+i]={};
+  cuadreLocal['c'+i].tipoPago=tipo;
+  // Update button styles
+  ['efectivo','transferencia','credito'].forEach(t=>{
+    const el=document.getElementById('tp-'+t.slice(0,2)+'-'+i);
+    if(!el) return;
+    el.className='pago-btn'+(tipo===t?' sel-'+t.slice(0,2):'');
+  });
+  // For credito, auto-set cobrado to 0 if empty
+  const cbEl=document.getElementById('cb-'+i);
+  if(tipo==='credito'&&cbEl&&cbEl.value==='') cbEl.value='0';
+  recalcResumen();
+  renderZonaResumen();
+}
+
+function renderPagoSummary(){
+  const items=getItemsCam(activeCamId);
+  let efV=0,efD=0, trV=0,trD=0, crV=0,crD=0;
+  items.forEach((x,i)=>{
+    const ci=cuadreLocal['c'+i]||{};
+    const rV=ci.realCajas!==undefined?ci.realCajas:x.p.cajas;
+    const rD=rV*x.p.precio;
+    const tipo=ci.tipoPago||'efectivo';
+    if(tipo==='efectivo')     {efV++;efD+=rD;}
+    else if(tipo==='transferencia'){trV++;trD+=rD;}
+    else if(tipo==='credito') {crV++;crD+=rD;}
+  });
+  const cont=document.getElementById('pago-summary-cont');
+  if(!cont) return;
+  cont.innerHTML=`
+    <div class="pago-summary">
+      <div class="pago-box pago-box-ef">
+        <div class="pago-box-val">${efV}</div>
+        <div class="pago-box-lab">Efectivo</div>
+        <div class="pago-box-sub">$${fmt(efD)}</div>
+      </div>
+      <div class="pago-box pago-box-tr">
+        <div class="pago-box-val">${trV}</div>
+        <div class="pago-box-lab">Transfer.</div>
+        <div class="pago-box-sub">$${fmt(trD)}</div>
+      </div>
+      <div class="pago-box pago-box-cr">
+        <div class="pago-box-val">${crV}</div>
+        <div class="pago-box-lab">Crédito</div>
+        <div class="pago-box-sub">$${fmt(crD)}</div>
+      </div>
+    </div>`;
+}
+
+/* ── RESUMEN POR ZONA ── */
+function renderZonaResumen(){
+  const items=getItemsCam(activeCamId);
+  if(!items.length){document.getElementById('zona-resumen').textContent='—';return;}
+
+  // Group by zona
+  const zonas={};
+  items.forEach((x,i)=>{
+    const z=x.zona||'Sin zona';
+    if(!zonas[z]) zonas[z]={prevV:0,prevP:0,prevD:0,realV:0,realP:0,realD:0};
+    const ci=cuadreLocal['c'+i]||{};
+    const rV=ci.realCajas!==undefined?ci.realCajas:x.p.cajas;
+    const rP=ci.realProm!==undefined?ci.realProm:x.p.promo;
+    const rD=rV*x.p.precio;
+    zonas[z].prevV+=x.p.cajas;
+    zonas[z].prevP+=x.p.promo;
+    zonas[z].prevD+=x.p.total;
+    zonas[z].realV+=rV;
+    zonas[z].realP+=rP;
+    zonas[z].realD+=rD;
+  });
+
+  const names=Object.keys(zonas).sort();
+  let totPrevV=0,totPrevP=0,totPrevD=0,totRealV=0,totRealP=0,totRealD=0;
+
+  const rows=names.map(z=>{
+    const d=zonas[z];
+    totPrevV+=d.prevV; totPrevP+=d.prevP; totPrevD+=d.prevD;
+    totRealV+=d.realV; totRealP+=d.realP; totRealD+=d.realD;
+    const totR=d.realV+d.realP;
+    const prom=totR>0?Math.round(d.realD/totR):0;
+    const promPrev=((d.prevV+d.prevP)>0)?Math.round(d.prevD/(d.prevV+d.prevP)):0;
+    const promDiff=prom!==promPrev;
+    return`<tr>
+      <td>${esc(z)}</td>
+      <td>${d.realV}<span style="font-size:10px;color:var(--muted)"> (${d.prevV})</span></td>
+      <td>${d.realP}<span style="font-size:10px;color:var(--muted)"> (${d.prevP})</span></td>
+      <td style="font-weight:700">$${fmt(d.realD)}<span style="font-size:10px;color:var(--muted);display:block">($${fmt(d.prevD)})</span></td>
+      <td><span class="prom-pill${promDiff?' diff':''}" title="Prev: $${promPrev}">$${prom}</span></td>
+    </tr>`;
+  }).join('');
+
+  const totR=totRealV+totRealP;
+  const promTot=totR>0?Math.round(totRealD/totR):0;
+
+  document.getElementById('zona-resumen').innerHTML=`
+    <div style="font-size:11px;color:var(--muted);margin-bottom:6px">Real (Preventa) · Precio promedio = $ total ÷ (V+P)</div>
+    <table class="zona-table">
+      <thead><tr>
+        <th>Zona</th><th>Vendidas V</th><th>Promo P</th><th>Total $</th><th>$/cj prom</th>
+      </tr></thead>
+      <tbody>${rows}</tbody>
+      <tfoot><tr>
+        <td>TOTAL</td>
+        <td>${totRealV} <span style="opacity:.7;font-size:10px">(${totPrevV})</span></td>
+        <td>${totRealP} <span style="opacity:.7;font-size:10px">(${totPrevP})</span></td>
+        <td>$${fmt(totRealD)} <span style="opacity:.7;font-size:10px">($${fmt(totPrevD)})</span></td>
+        <td>$${promTot}</td>
+      </tr></tfoot>
+    </table>`;
+}
+
+function fmtFecha(f){
+  if(!f) return '—';
+  const [y,m,d]=f.split('-');
+  const M=['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+  return d+'/'+M[+m-1]+'/'+y;
+}
+function fmt(n){return Number(n).toLocaleString('es-DO');}
+function esc(s){if(!s)return'';const d=document.createElement('div');d.textContent=s;return d.innerHTML;}
+function setText(id,v){const e=document.getElementById(id);if(e)e.textContent=v;}
+function exportarExcel(){
+  if(!activeCamId){showToast('Abre un cuadre primero');return;}
+  const cam=cams.find(c=>c.id===activeCamId);
+  if(!cam){showToast('Camión no encontrado');return;}
+
+  const items=getItemsCam(activeCamId);
+  if(!items.length){showToast('Sin clientes asignados');return;}
+
+  const g=cuadreLocal.gastos||{};
+  const fecha=cam.fechaAsignacion||new Date().toISOString().slice(0,10);
+  const [fy,fm,fd]=fecha.split('-');
+  const dias=['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];
+  const diaSem=dias[new Date(fecha+'T12:00:00').getDay()];
+  const mesesN=['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+  const fechaStr=fd+'/'+mesesN[+fm-1]+'/'+fy;
+  const numAsig=cam.asignacionId||(cam.nombre+'-'+fecha.replace(/-/g,''));
+
+  // Aggregate real totals
+  let totRealV=0,totRealP=0,totRealD=0;
+  // Per-zone aggregates
+  const zonaMap={};
+  items.forEach((x,i)=>{
+    const ci=cuadreLocal['c'+i]||{};
+    const rV=ci.realCajas!==undefined?ci.realCajas:x.p.cajas;
+    const rP=ci.realProm!==undefined?ci.realProm:x.p.promo;
+    const rD=rV*x.p.precio;
+    totRealV+=rV; totRealP+=rP; totRealD+=rD;
+    const z=x.zona||'Sin zona';
+    if(!zonaMap[z]) zonaMap[z]={vd:0,vcaj:0,vprom:0};
+    zonaMap[z].vd+=rD; zonaMap[z].vcaj+=rV; zonaMap[z].vprom+=rP;
+  });
+
+  const priceProm=totRealV>0?Math.round(totRealD/totRealV*100)/100:0;
+
+  // ── Build tab-separated row matching DATA columns exactly
+  // id_cols: Fecha, Mes, Año, Dia_Semana, ID_Cuadre, Camion, Zona_Principal
+  const zonaPrincipal=[...new Set(items.map(x=>x.zona))].join('+');
+  const row=[
+    fechaStr,                          // Fecha
+    +fm,                               // Mes
+    +fy,                               // Año
+    diaSem,                            // Dia_Semana
+    numAsig,                           // ID_Cuadre
+    cam.nombre,                        // Camion
+    zonaPrincipal,                     // Zona_Principal
+    // inv_cols
+    g.anterior||0,                     // Sobrante_Anterior
+    items.reduce((a,x)=>a+x.p.cajas,0),// Cajas_Compradas (preventa)
+    '',                                // Precio_Compra_Unitario (fill in Excel)
+    '',                                // Costo_Compra_Total (fill in Excel)
+    g.sobrante||0,                     // Sobrante_Final
+  ];
+
+  // Ventas por zona — 13 zonas × 3 cols
+  const ZONAS=['Zona 1','Zona 2','Zona 3','Zona 4','Zona 5','Zona 6',
+               'Zona 7','Zona 8','Zona 9','Zona 10','Zona 11','Zona 12','Zona 13'];
+  ZONAS.forEach(z=>{
+    const d=zonaMap[z]||{vd:0,vcaj:0,vprom:0};
+    row.push(d.vd||0, d.vcaj||0, d.vprom||0);
+  });
+
+  // vtot_cols
+  row.push(totRealD, totRealV, totRealP, priceProm);
+
+  // sis_cols
+  row.push('','','');  // Cajas_Sistema, Venta_Sistema_$, Recupero — manual
+
+  // cobro_cols
+  row.push(g.efectivo||0, g.transferencias||0, g.creditos||0, g.transferencias||0);
+
+  // gruta_cols
+  row.push(
+    g.combustible||0, g.peaje||0, g.ayudante||0, 0,  // G_Combustible,Peaje,Ayudante,Mantenimiento
+    0,                                                  // G_Descuadre
+    g.otros||0,                                        // G_Otros_Ruta
+    (+(g.combustible||0))+(+(g.peaje||0))+(+(g.ayudante||0))+(+(g.otros||0)) // Total_Gastos_Ruta
+  );
+
+  // gofic_cols — office expenses not captured in cuadre, leave blank
+  row.push(0,0,0,0,0,0,0);  // G_Luz,Internet,Alquiler,Nomina,Seguros,Misc,Total_Gastos_Oficina
+
+  // bal_cols
+  row.push('','','','',''); // Comisiones,Retiros,Pagos_Facturas,Otros_Ingresos,Notas
+
+  // ── Format output
+  const tsv=row.map(v=>{
+    if(v===''||v===null||v===undefined) return '';
+    if(typeof v==='number') return v.toString();
+    return String(v).replace(/	/g,' ');
+  }).join('	');
+
+  // ── Build human-readable export panel
+  const h=new Date().toLocaleTimeString('es-DO',{hour:'2-digit',minute:'2-digit'});
+  const zonaLines=Object.entries(zonaMap).map(([z,d])=>{
+    return '  '+z+': V:'+d.vcaj+' P:'+d.vprom+' $'+fmt(d.vd||0);
+  }).join('\n');
+
+  const resumen=
+    `=== FILA PARA DATA — ${numAsig} ===
+`+
+    `Fecha: ${fechaStr} | Mes: ${+fm} | Año: ${+fy} | ${diaSem}
+`+
+    `Camión: ${cam.nombre} | Zonas: ${zonaPrincipal}
+`+
+    `─────────────────────────────────
+`+
+    `INVENTARIO
+`+
+    `  Sobrante anterior: ${g.anterior||0}
+`+
+    `  Sobrante final:    ${g.sobrante||0}
+`+
+    `VENTAS REALES
+`+
+    `  Cajas vendidas: ${totRealV} | Promo: ${totRealP}
+`+
+    `  Total $: $${fmt(totRealD)} | $/cj prom: $${fmt(priceProm)}
+`+
+    `POR ZONA:
+${zonaLines}
+`+
+    `COBROS
+`+
+    `  Efectivo: $${fmt(g.efectivo||0)}
+`+
+    `  Transferencia: $${fmt(g.transferencias||0)}
+`+
+    `  Crédito/Pendiente: $${fmt(g.creditos||0)}
+`+
+    `GASTOS RUTA
+`+
+    `  Combustible: $${fmt(g.combustible||0)}
+`+
+    `  Peaje: $${fmt(g.peaje||0)}
+`+
+    `  Ayudante: $${fmt(g.ayudante||0)}
+`+
+    `  Otros: $${fmt(g.otros||0)}
+`+
+    `─────────────────────────────────
+`+
+    `⚠ Precio compra, Gastos Oficina, Sistema Paralelo,
+`+
+    `  Comisiones y Retiros: completar en Excel.
+
+`+
+    `[FILA TSV — PEGAR EN DATA]
+`+tsv;
+
+  // Show export modal
+  mostrarExportModal(resumen, tsv);
+}
+
+function mostrarExportModal(resumen, tsv){
+  const existing=document.getElementById('export-modal');
+  if(existing) existing.remove();
+
+  const modal=document.createElement('div');
+  modal.id='export-modal';
+  modal.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:600;display:flex;align-items:flex-end;justify-content:center';
+  modal.innerHTML=`
+    <div style="background:white;border-radius:16px 16px 0 0;padding:20px 16px;width:100%;max-height:85vh;overflow-y:auto">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+        <div style="font-size:16px;font-weight:700;color:var(--azul)">📊 Exportar para Excel</div>
+        <button onclick="document.getElementById('export-modal').remove()"
+          style="background:none;border:none;font-size:24px;color:var(--muted);cursor:pointer">×</button>
+      </div>
+      <div style="font-size:12px;color:var(--muted);margin-bottom:8px">
+        Resumen del cuadre. Los campos en ⚠ se completan manualmente en Excel.
+      </div>
+      <div id="export-resumen" style="background:var(--gris);border:1px solid var(--borde);border-radius:8px;
+        padding:12px;font-size:11px;font-family:'Courier New',monospace;white-space:pre-wrap;
+        word-break:break-word;max-height:38vh;overflow-y:auto;margin-bottom:12px">${resumen}</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
+        <button onclick="copiarTSV()" style="padding:13px;border:none;border-radius:10px;
+          background:var(--azul);color:white;font-size:14px;font-weight:700;cursor:pointer">
+          📋 Copiar fila TSV
+        </button>
+        <button onclick="copiarResumenExport()" style="padding:13px;border:none;border-radius:10px;
+          background:#166534;color:white;font-size:14px;font-weight:700;cursor:pointer">
+          📄 Copiar resumen
+        </button>
+      </div>
+      <div style="font-size:12px;color:var(--muted);background:#fef3c7;border-radius:8px;padding:10px">
+        <strong>Cómo pegarlo en Excel:</strong><br>
+        1. Abre el Excel → hoja <strong>DATA</strong><br>
+        2. Haz clic en la primera celda de la próxima fila vacía (columna A)<br>
+        3. Pega con <strong>Ctrl+V</strong> — los datos llenan todas las columnas automáticamente<br>
+        4. Completa los campos en blanco (precio compra, sistema paralelo, etc.)
+      </div>
+    </div>`;
+
+  // Store tsv for copy buttons
+  modal._tsv = tsv;
+  window._exportTSV = tsv;
+  window._exportResumen = document.getElementById ? resumen : '';
+  document.body.appendChild(modal);
+}
+
+function copiarTSV(){
+  const txt=window._exportTSV||'';
+  if(navigator.clipboard) navigator.clipboard.writeText(txt).then(()=>showToast('Fila TSV copiada ✓'));
+  else{const t=document.createElement('textarea');t.value=txt;t.style.position='fixed';t.style.opacity='0';document.body.appendChild(t);t.select();document.execCommand('copy');document.body.removeChild(t);showToast('Fila TSV copiada ✓');}
+}
+
+function copiarResumenExport(){
+  const txt=document.getElementById('export-resumen')?.textContent||'';
+  if(navigator.clipboard) navigator.clipboard.writeText(txt).then(()=>showToast('Resumen copiado ✓'));
+  else{const t=document.createElement('textarea');t.value=txt;t.style.position='fixed';t.style.opacity='0';document.body.appendChild(t);t.select();document.execCommand('copy');document.body.removeChild(t);showToast('Resumen copiado ✓');}
+}
+
+function showToast(m){const t=document.getElementById('toast');t.textContent=m;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2500);}
+</script>
+</body>
+</html>
