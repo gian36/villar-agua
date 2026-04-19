@@ -866,8 +866,8 @@ function exportarExcel(){
     const rD=rV*x.p.precio;
     totRealV+=rV; totRealP+=rP; totRealD+=rD;
     const z=x.zona||'Sin zona';
-    if(!zonaMap[z]) zonaMap[z]={v$:0,vcaj:0,vprom:0};
-    zonaMap[z].v$+=rD; zonaMap[z].vcaj+=rV; zonaMap[z].vprom+=rP;
+    if(!zonaMap[z]) zonaMap[z]={vd:0,vcaj:0,vprom:0};
+    zonaMap[z].vd+=rD; zonaMap[z].vcaj+=rV; zonaMap[z].vprom+=rP;
   });
 
   const priceProm=totRealV>0?Math.round(totRealD/totRealV*100)/100:0;
@@ -895,8 +895,8 @@ function exportarExcel(){
   const ZONAS=['Zona 1','Zona 2','Zona 3','Zona 4','Zona 5','Zona 6',
                'Zona 7','Zona 8','Zona 9','Zona 10','Zona 11','Zona 12','Zona 13'];
   ZONAS.forEach(z=>{
-    const d=zonaMap[z]||{v$:0,vcaj:0,vprom:0};
-    row.push(d.v$||0, d.vcaj||0, d.vprom||0);
+    const d=zonaMap[z]||{vd:0,vcaj:0,vprom:0};
+    row.push(d.vd||0, d.vcaj||0, d.vprom||0);
   });
 
   // vtot_cols
@@ -931,9 +931,9 @@ function exportarExcel(){
 
   // ── Build human-readable export panel
   const h=new Date().toLocaleTimeString('es-DO',{hour:'2-digit',minute:'2-digit'});
-  const zonaLines=Object.entries(zonaMap).map(([z,d])=>
-    `  ${z}: V:${d.vcaj} P:${d.vprom} $${fmt(d.v$)}`).join('
-');
+  const zonaLines=Object.entries(zonaMap).map(([z,d])=>{
+    return '  '+z+': V:'+d.vcaj+' P:'+d.vprom+' $'+fmt(d.vd||0);
+  }).join('\n');
 
   const resumen=
     `=== FILA PARA DATA — ${numAsig} ===
