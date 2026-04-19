@@ -116,6 +116,10 @@ html,body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-se
   border-radius:4px;background:white;color:var(--texto);outline:none;width:100%}
 .tbl-obs{font-size:12px;padding:3px 6px;border:1.5px solid var(--borde);
   border-radius:4px;background:white;color:var(--texto);outline:none;width:100%}
+/* Hide number spinners — not needed, user types full value */
+input[type=number]::-webkit-inner-spin-button,
+input[type=number]::-webkit-outer-spin-button{-webkit-appearance:none;margin:0}
+input[type=number]{-moz-appearance:textfield;appearance:textfield}
 .dif-pill{font-size:10px;font-weight:700;padding:1px 6px;border-radius:10px;display:inline-block}
 .dif-ok{background:var(--verde-bg);color:var(--verde)}
 .dif-neg{background:var(--rojo-bg);color:var(--rojo)}
