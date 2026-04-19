@@ -238,9 +238,18 @@ const JBIN='69e249f336566621a8c3c97c';
 const JURL='https://api.jsonbin.io/v3/b/'+JBIN;
 
 async function leerBin(){
-  const r=await fetch(JURL+'/latest',{headers:{'X-Master-Key':JKEY}});
-  if(!r.ok) throw new Error(r.status);
-  return (await r.json()).record;
+  let r;
+  try{
+    r=await fetch(JURL+'/latest',{headers:{'X-Master-Key':JKEY}});
+  }catch(netErr){
+    throw new Error('Sin conexión a internet: '+netErr.message);
+  }
+  if(r.status===401) throw new Error('API Key incorrecta (401) — verificar en jsonbin.io');
+  if(r.status===404) throw new Error('Bin ID no encontrado (404) — verificar en jsonbin.io');
+  if(!r.ok) throw new Error('Error del servidor: HTTP '+r.status);
+  const j=await r.json();
+  if(!j.record) throw new Error('Respuesta vacía del servidor — el bin puede estar vacío');
+  return j.record;
 }
 async function escribirBin(d){
   const r=await fetch(JURL,{method:'PUT',headers:{'Content-Type':'application/json','X-Master-Key':JKEY},body:JSON.stringify(d)});
@@ -261,16 +270,108 @@ window.addEventListener('DOMContentLoaded',()=>{
 });
 
 async function cargarDatos(){
-  document.getElementById('btn-ref').textContent='⟳';
+  const btn=document.getElementById('btn-ref');
+  const cont=document.getElementById('dashboard-list');
+  btn.textContent='⟳ ...';
+  cont.innerHTML='<div style="text-align:center;padding:40px 20px;color:var(--muted)">'+
+    '<div style="font-size:28px;margin-bottom:10px">⟳</div>Conectando con el servidor...</div>';
   try{
     binData = await leerBin();
     subs    = binData.pedidos      || {};
     asig    = binData.asignaciones || {};
     cams    = binData.camiones      || [];
     cuadres = binData.cuadres       || {};
-  }catch(e){showToast('Error de conexión');console.error(e);}
-  document.getElementById('btn-ref').textContent='⟳';
-  renderDashboard();
+
+    // Diagnostic: show what was loaded
+    const nSubs = Object.keys(subs).length;
+    const nCams = cams.length;
+    const nAsig = Object.keys(asig).length;
+    console.log(`Cargado: ${nSubs} preventas, ${nCams} camiones, ${nAsig} asignaciones`);
+
+    btn.textContent='⟳ Actualizar';
+    // Show brief success if nothing to display
+    renderDashboard();
+    // If dashboard is empty, show diagnostic hint
+    const activeCams=cams.filter(cam=>Object.keys(asig).some(k=>asig[k]===cam.id));
+    if(activeCams.length===0 && Object.keys(subs).length===0){
+      const hint=document.createElement('div');
+      hint.style.cssText='margin:8px 12px;padding:10px 14px;background:var(--celeste);border-radius:10px;font-size:12px;color:var(--azul)';
+      hint.innerHTML='<strong>ℹ Bin conectado correctamente.</strong> No hay asignaciones aún. '+
+        'El encargado debe finalizar las asignaciones en la app de encargado para que aparezcan aquí.'+
+        '<br><span style="opacity:.7">Preventas en bin: '+Object.keys(subs).length+
+        ' | Camiones: '+cams.length+
+        ' | Asignaciones: '+Object.keys(asig).length+'</span>';
+      const dashList=document.getElementById('dashboard-list');
+      if(dashList) dashList.appendChild(hint);
+    }
+
+  }catch(e){
+    console.error('Error cargando datos:', e);
+    btn.textContent='⟳ Reintentar';
+    // Show detailed error in dashboard area
+    const isNetworkErr = e.message && (e.message.includes('fetch') || e.message.includes('network') || e.message.includes('Failed'));
+    cont.innerHTML=`
+      <div style="margin:16px;background:#fee2e2;border-radius:12px;padding:20px;border-left:4px solid #991b1b">
+        <div style="font-size:16px;font-weight:700;color:#991b1b;margin-bottom:8px">⚠ Error al cargar datos</div>
+        <div style="font-size:13px;color:#7f1d1d;margin-bottom:12px">${e.message||'Error desconocido'}</div>
+        <div style="font-size:12px;color:#991b1b;background:#fef2f2;border-radius:8px;padding:10px;margin-bottom:12px">
+          <strong>Posibles causas:</strong><br>
+          • Sin conexión a internet<br>
+          • Clave de JSONBin expirada o incorrecta<br>
+          • El bin fue eliminado o es inaccesible<br>
+          • JSONBin está caído (revisar jsonbin.io)
+        </div>
+        <button onclick="cargarDatos()" style="width:100%;padding:12px;background:#991b1b;color:white;border:none;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer">
+          ⟳ Intentar de nuevo
+        </button>
+      </div>
+      <div style="margin:0 16px">
+        <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);padding:8px 0 4px">Diagnóstico de conexión</div>
+        <div id="diag-result" style="background:var(--gris);border-radius:8px;padding:12px;font-size:12px;font-family:monospace;color:var(--texto)">Ejecutando prueba...</div>
+      </div>`;
+    // Run connection test
+    diagnosticarConexion();
+  }
+}
+
+async function diagnosticarConexion(){
+  const el=document.getElementById('diag-result');
+  if(!el) return;
+  let log='';
+  try{
+    log+='[1] Probando conexión a internet...\n';
+    el.textContent=log;
+    const t1=Date.now();
+    const r=await fetch('https://api.jsonbin.io/v3/b/'+JBIN+'/latest',
+      {headers:{'X-Master-Key':JKEY}});
+    const ms=Date.now()-t1;
+    log+=`[2] Respuesta HTTP: ${r.status} (${ms}ms)\n`;
+    el.textContent=log;
+    if(r.status===200){
+      const j=await r.json();
+      const keys=Object.keys(j.record||{});
+      log+=`[3] ✓ Bin accesible. Claves raíz: ${keys.join(', ')||'(vacío)'}\n`;
+      log+=`    pedidos: ${Object.keys(j.record?.pedidos||{}).length}\n`;
+      log+=`    camiones: ${(j.record?.camiones||[]).length}\n`;
+      log+=`    asignaciones: ${Object.keys(j.record?.asignaciones||{}).length}\n`;
+      log+=`    cuadres: ${Object.keys(j.record?.cuadres||{}).length}\n`;
+      log+='[4] Datos cargados correctamente. Recargando...';
+      el.textContent=log;
+      setTimeout(()=>cargarDatos(),1500);
+    } else if(r.status===401){
+      log+='[3] ✗ Error 401: API Key incorrecta o expirada.\n';
+      log+='    Verificar la clave en jsonbin.io → Account → API Keys';
+    } else if(r.status===404){
+      log+='[3] ✗ Error 404: Bin ID no encontrado.\n';
+      log+='    Verificar el Bin ID en jsonbin.io';
+    } else {
+      log+=`[3] ✗ Error inesperado: ${r.status}`;
+    }
+  }catch(err){
+    log+=`[2] ✗ Sin conexión o error de red: ${err.message}\n`;
+    log+='    Verifica que el dispositivo tiene internet activo.';
+  }
+  if(el) el.textContent=log;
 }
 
 async function guardarBin(){
