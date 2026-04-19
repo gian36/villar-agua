@@ -317,7 +317,7 @@ input:focus,select:focus{border-color:var(--azul2);background:white}
         <div class="sidebar-row"><label>+ Cajas cargadas hoy</label><input class="sidebar-input" id="g-cargadas" type="number" placeholder="0" inputmode="numeric" oninput="recalcResumen()"></div>
         <div class="sidebar-row"><label>= Total disponible</label><input class="sidebar-input readonly" id="g-disponible" readonly></div>
         <div class="sidebar-row"><label>Sobrante físico (regreso)</label><input class="sidebar-input" id="g-sobrante" type="number" placeholder="0" inputmode="numeric" oninput="recalcResumen()"></div>
-        <div class="sidebar-row"><label>Efectivo recibido $</label><input class="sidebar-input" id="g-efectivo" type="number" placeholder="0" inputmode="numeric" oninput="recalcResumen()"></div>
+        <div class="sidebar-row"><label>Efectivo recibido del chofer $</label><input class="sidebar-input" id="g-efectivo" type="number" placeholder="0" inputmode="numeric" oninput="recalcResumen()"></div>
         <div class="sidebar-row"><label>Pendientes / Créditos</label><input class="sidebar-input" id="g-creditos" type="number" placeholder="0" inputmode="numeric" oninput="recalcResumen()"></div>
       </div>
 
@@ -348,8 +348,8 @@ input:focus,select:focus{border-color:var(--azul2);background:white}
         <div class="res-row"><span>Facturado (real entregado)</span><span id="r-real">$0</span></div>
         <div class="res-row"><span>Efectivo recibido</span><span id="r-efectivo">$0</span></div>
         <div class="res-row"><span>Total gastos</span><span id="r-gastos">$0</span></div>
-        <div class="res-row total"><span>A entregar a caja</span><span id="r-entregar">$0</span></div>
-        <div class="res-row" id="r-dif-ef-row"><span>Diferencia efectivo</span><span id="r-dif-ef">$0</span></div>
+        <div class="res-row total"><span>Esperado en caja (venta − gastos)</span><span id="r-entregar">$0</span></div>
+        <div class="res-row" id="r-dif-ef-row"><span>Diferencia (recibido − esperado)</span><span id="r-dif-ef">$0</span></div>
         <div class="res-row"><span>Total disponible cajas</span><span id="r-disponible">—</span></div>
         <div class="res-row"><span>Cajas preventa</span><span id="r-caj-prev">0</span></div>
         <div class="res-row"><span>Cajas reales</span><span id="r-caj-real">0</span></div>
@@ -759,19 +759,21 @@ function recalcResumen(){
   const combustible=+(document.getElementById('g-combustible').value)||0;
   const peaje      =+(document.getElementById('g-peaje').value)||0;
   const otros      =+(document.getElementById('g-otros').value)||0;
-  const anterior   =+(document.getElementById('g-anterior').value)||0;
   const cargadas   =+(document.getElementById('g-cargadas').value)||0;
-  const disponible = anterior+cargadas;
-  const dispEl=document.getElementById('g-disponible');if(dispEl)dispEl.value=disponible||'';
+  const anterior   =+(document.getElementById('g-anterior').value)||0;
   const sobrante   =+(document.getElementById('g-sobrante').value)||0;
   const efectivo   =+(document.getElementById('g-efectivo').value)||0;
   const creditos   =+(document.getElementById('g-creditos').value)||0;
 
-  const gastos=ayudante+combustible+peaje+otros;
+  const disponible = anterior + cargadas;
+  const dispEl=document.getElementById('g-disponible');
+  if(dispEl) dispEl.value = disponible || '';
 
-  // Compute pago breakdown from client data
+  const gastos = ayudante + combustible + peaje + otros;
+
+  // Pago breakdown
   const items2=getItemsCam(activeCamId);
-  let sumEf=0,sumTr=0,sumCr=0;
+  let sumEf=0, sumTr=0, sumCr=0;
   items2.forEach((x,i2)=>{
     const ci2=cuadreLocal['c'+i2]||{};
     const rV2=ci2.realCajas!==undefined?ci2.realCajas:x.p.cajas;
@@ -781,39 +783,86 @@ function recalcResumen(){
     else if(tipo==='credito')  sumCr+=rD2;
     else                       sumEf+=rD2;
   });
-  setText('r-ef-neto','$'+fmt(sumEf));
-  setText('r-tr-neto','$'+fmt(sumTr));
-  setText('r-cr-neto','$'+fmt(sumCr));
+  setText('r-ef-neto','RD$'+fmtD(sumEf));
+  setText('r-tr-neto','RD$'+fmtD(sumTr));
+  setText('r-cr-neto','RD$'+fmtD(sumCr));
 
-  const entregar=efectivo-gastos;
-  const difEf=efectivo-(sumEf)+gastos;
+  // Core balance logic:
+  // efectivo = cash physically received from driver
+  // Venta real = totRealD
+  // gastos are deducted FROM the sale to get what should have been delivered
+  // expected_to_caja = totRealD - gastos - creditos - sumTr
+  // difference = efectivo - expected_to_caja
+  const expectedCaja = totRealD - gastos - creditos - sumTr;
+  const difEf = efectivo - expectedCaja;
 
-  let totRealV=0,totRealP=0;
-  items.forEach((x,i)=>{
-    const ci=cuadreLocal['c'+i]||{};
-    totRealV+=ci.realCajas!==undefined?ci.realCajas:x.p.cajas;
-    totRealP+=ci.realProm!==undefined?ci.realProm:x.p.promo;
+  // Cajas
+  let totRealV=0, totRealP=0;
+  items2.forEach((x,i2)=>{
+    const ci2=cuadreLocal['c'+i2]||{};
+    totRealV+=ci2.realCajas!==undefined?ci2.realCajas:x.p.cajas;
+    totRealP+=ci2.realProm!==undefined?ci2.realProm:x.p.promo;
   });
-  const difCaj=disponible?(disponible-(totRealV+totRealP)-sobrante):0;
+  const difCaj = disponible ? disponible-(totRealV+totRealP)-sobrante : 0;
 
-  setText('r-facturado','$'+fmt(totPrevD));
-  setText('r-real','$'+fmt(totRealD));
-  setText('r-efectivo','$'+fmt(efectivo));
-  setText('r-gastos','$'+fmt(gastos));
-  setText('r-creditos','$'+fmt(creditos));
-  setText('r-entregar','$'+fmt(entregar));
-  setText('r-dif-ef','$'+fmt(difEf));
-  setText('r-disponible',disponible||'—');
-  setText('r-caj-prev',items.reduce((a,x)=>a+x.p.cajas+x.p.promo,0));
-  setText('r-caj-real',totRealV+totRealP);
-  setText('r-dif-caj',cargadas?difCaj:'—');
+  setText('r-facturado','RD$'+fmtD(totPrevD));
+  setText('r-real','RD$'+fmtD(totRealD));
+  setText('r-efectivo','RD$'+fmtD(efectivo));
+  setText('r-gastos','RD$'+fmtD(gastos));
+  setText('r-creditos','RD$'+fmtD(creditos));
+  setText('r-entregar','RD$'+fmtD(expectedCaja));
+  setText('r-disponible', disponible ? disponible : '—');
+  setText('r-caj-prev', items2.reduce((a,x)=>a+x.p.cajas+x.p.promo,0));
+  setText('r-caj-real', totRealV+totRealP);
 
-  const dRow=document.getElementById('r-dif-ef-row');
-  dRow.className='resumen-row '+(difEf===0?'diff-ok':difEf!==0?'diff-neg':'');
-  const cRow=document.getElementById('r-dif-caj-row');
-  cRow.className='resumen-row '+(cargadas&&difCaj===0?'diff-ok':cargadas&&difCaj!==0?'diff-neg':'');
+  // Color coding efectivo diff
+  const difEfEl=document.getElementById('r-dif-ef');
+  const difEfRow=document.getElementById('r-dif-ef-row');
+  if(difEfEl){
+    difEfEl.textContent='RD$'+fmtD(difEf);
+    if(difEf===0){
+      difEfEl.style.color='var(--verde)'; difEfEl.style.fontWeight='700';
+      if(difEfRow) difEfRow.className='res-row diff-ok';
+    } else if(difEf>0){
+      // Sobrante de dinero — naranja
+      difEfEl.style.color='#d97706'; difEfEl.style.fontWeight='700';
+      if(difEfRow) difEfRow.className='res-row';
+      difEfRow.style.color='#d97706';
+    } else if(difEf<0 && Math.abs(difEf)<=100){
+      // Faltante pequeño (<= RD$100) — naranja
+      difEfEl.style.color='#d97706'; difEfEl.style.fontWeight='700';
+      if(difEfRow) difEfRow.className='res-row';
+      if(difEfRow) difEfRow.style.color='#d97706';
+    } else {
+      // Faltante > RD$100 — rojo
+      difEfEl.style.color='var(--rojo)'; difEfEl.style.fontWeight='700';
+      if(difEfRow) difEfRow.className='res-row diff-neg';
+      if(difEfRow) difEfRow.style.color='';
+    }
+  }
 
-  // Save gastos to local
+  // Color coding cajas diff
+  const difCajEl=document.getElementById('r-dif-caj');
+  const difCajRow=document.getElementById('r-dif-caj-row');
+  if(difCajEl){
+    difCajEl.textContent=disponible ? difCaj : '—';
+    if(!disponible){
+      if(difCajRow) difCajRow.className='res-row';
+    } else if(difCaj===0){
+      difCajEl.style.color='var(--verde)'; difCajEl.style.fontWeight='700';
+      if(difCajRow) difCajRow.className='res-row diff-ok';
+    } else if(difCaj<0){
+      // Faltante de cajas — rojo
+      difCajEl.style.color='var(--rojo)'; difCajEl.style.fontWeight='700';
+      if(difCajRow){ difCajRow.className='res-row diff-neg'; difCajRow.style.color='';}
+    } else {
+      // Sobrante de cajas — naranja
+      difCajEl.style.color='#d97706'; difCajEl.style.fontWeight='700';
+      if(difCajRow){ difCajRow.className='res-row'; difCajRow.style.color='#d97706';}
+    }
+  }
+
+  // Save gastos
   cuadreLocal.gastos={ayudante,combustible,peaje,otros,anterior,cargadas,sobrante,efectivo,creditos};
   renderZonaResumen();
   renderPagoSummary();
@@ -958,6 +1007,7 @@ function fmtFecha(f){
   return d+'/'+M[+m-1]+'/'+y;
 }
 function fmt(n){return Number(n).toLocaleString('es-DO');}
+function fmtD(n){return Number(n).toLocaleString('es-DO',{minimumFractionDigits:2,maximumFractionDigits:2});}
 function esc(s){if(!s)return'';const d=document.createElement('div');d.textContent=s;return d.innerHTML;}
 function setText(id,v){const e=document.getElementById(id);if(e)e.textContent=v;}
 function exportarExcel(){
