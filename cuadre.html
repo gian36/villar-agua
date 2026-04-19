@@ -184,8 +184,10 @@ html,body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-se
   <div class="sec-label">Efectivo recibido</div>
   <div class="card">
     <div class="gastos-grid">
-      <div class="gasto-row"><span class="gasto-label">Cajas cargadas al salir</span><input class="gasto-input" id="g-cargadas" type="number" placeholder="0" inputmode="numeric" oninput="recalcResumen()"></div>
-      <div class="gasto-row"><span class="gasto-label">Sobrante físico</span><input class="gasto-input" id="g-sobrante" type="number" placeholder="0" inputmode="numeric" oninput="recalcResumen()"></div>
+      <div class="gasto-row"><span class="gasto-label">Sobrante día anterior</span><input class="gasto-input" id="g-anterior" type="number" placeholder="0" inputmode="numeric" oninput="recalcResumen()"></div>
+      <div class="gasto-row"><span class="gasto-label">+ Cajas cargadas hoy</span><input class="gasto-input" id="g-cargadas" type="number" placeholder="0" inputmode="numeric" oninput="recalcResumen()"></div>
+      <div class="gasto-row"><span class="gasto-label">= Total disponible</span><input class="gasto-input" id="g-disponible" readonly style="background:var(--celeste);color:var(--azul);font-weight:700"></div>
+      <div class="gasto-row"><span class="gasto-label">Sobrante físico (regreso)</span><input class="gasto-input" id="g-sobrante" type="number" placeholder="0" inputmode="numeric" oninput="recalcResumen()"></div>
       <div class="gasto-row"><span class="gasto-label">Efectivo recibido $</span><input class="gasto-input" id="g-efectivo" type="number" placeholder="0" inputmode="numeric" oninput="recalcResumen()"></div>
       <div class="gasto-row"><span class="gasto-label">Pendientes / Créditos</span><input class="gasto-input" id="g-creditos" type="number" placeholder="0" inputmode="numeric" oninput="recalcResumen()"></div>
     </div>
@@ -201,6 +203,7 @@ html,body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-se
     <div class="resumen-row"><span>Transferencias + Créditos</span><span id="r-creditos">$0</span></div>
     <div class="resumen-row total"><span>A entregar a caja</span><span id="r-entregar">$0</span></div>
     <div class="resumen-row" id="r-dif-ef-row"><span>Diferencia efectivo</span><span id="r-dif-ef">$0</span></div>
+    <div class="resumen-row"><span>Total disponible (anterior + cargadas)</span><span id="r-disponible">0</span></div>
     <div class="resumen-row"><span>Cajas preventa</span><span id="r-caj-prev">0</span></div>
     <div class="resumen-row"><span>Cajas entregadas (real)</span><span id="r-caj-real">0</span></div>
     <div class="resumen-row" id="r-dif-caj-row"><span>Diferencia cajas</span><span id="r-dif-caj">0</span></div>
@@ -354,14 +357,16 @@ function calcDifEf(camId, cq){
 
 function calcDifCaj(camId, cq){
   const items=getItemsCam(camId);
+  const anterior=+(cq.gastos?.anterior||0);
   const cargadas=+(cq.gastos?.cargadas||0);
+  const disponible=anterior+cargadas;
   const sobrante=+(cq.gastos?.sobrante||0);
   const totRealC=items.reduce((a,x,i)=>{
     const ci=cq['c'+i]||{};
     return a+(ci.realCajas!==undefined?ci.realCajas:x.p.cajas)+(ci.realProm!==undefined?ci.realProm:x.p.promo);
   },0);
-  if(!cargadas) return 0;
-  return cargadas - totRealC - sobrante;
+  if(!disponible) return 0;
+  return disponible - totRealC - sobrante;
 }
 
 /* ── CUADRE ── */
@@ -379,6 +384,7 @@ function abrirCuadre(camId){
   document.getElementById('g-combustible').value= g.combustible||'';
   document.getElementById('g-peaje').value      = g.peaje      ||'';
   document.getElementById('g-otros').value      = g.otros      ||'';
+  document.getElementById('g-anterior').value   = g.anterior   ||'';
   document.getElementById('g-cargadas').value   = g.cargadas   ||'';
   document.getElementById('g-sobrante').value   = g.sobrante   ||'';
   document.getElementById('g-efectivo').value   = g.efectivo   ||'';
@@ -529,7 +535,10 @@ function recalcResumen(){
   const combustible=+(document.getElementById('g-combustible').value)||0;
   const peaje      =+(document.getElementById('g-peaje').value)||0;
   const otros      =+(document.getElementById('g-otros').value)||0;
+  const anterior   =+(document.getElementById('g-anterior').value)||0;
   const cargadas   =+(document.getElementById('g-cargadas').value)||0;
+  const disponible = anterior+cargadas;
+  const dispEl=document.getElementById('g-disponible');if(dispEl)dispEl.value=disponible||'';
   const sobrante   =+(document.getElementById('g-sobrante').value)||0;
   const efectivo   =+(document.getElementById('g-efectivo').value)||0;
   const creditos   =+(document.getElementById('g-creditos').value)||0;
@@ -561,7 +570,7 @@ function recalcResumen(){
     totRealV+=ci.realCajas!==undefined?ci.realCajas:x.p.cajas;
     totRealP+=ci.realProm!==undefined?ci.realProm:x.p.promo;
   });
-  const difCaj=cargadas-(totRealV+totRealP)-sobrante;
+  const difCaj=disponible?(disponible-(totRealV+totRealP)-sobrante):0;
 
   setText('r-facturado','$'+fmt(totPrevD));
   setText('r-real','$'+fmt(totRealD));
@@ -570,6 +579,7 @@ function recalcResumen(){
   setText('r-creditos','$'+fmt(creditos));
   setText('r-entregar','$'+fmt(entregar));
   setText('r-dif-ef','$'+fmt(difEf));
+  setText('r-disponible',disponible||'—');
   setText('r-caj-prev',items.reduce((a,x)=>a+x.p.cajas+x.p.promo,0));
   setText('r-caj-real',totRealV+totRealP);
   setText('r-dif-caj',cargadas?difCaj:'—');
@@ -580,7 +590,7 @@ function recalcResumen(){
   cRow.className='resumen-row '+(cargadas&&difCaj===0?'diff-ok':cargadas&&difCaj!==0?'diff-neg':'');
 
   // Save gastos to local
-  cuadreLocal.gastos={ayudante,combustible,peaje,otros,cargadas,sobrante,efectivo,creditos};
+  cuadreLocal.gastos={ayudante,combustible,peaje,otros,anterior,cargadas,sobrante,efectivo,creditos};
   renderZonaResumen();
   renderPagoSummary();
 }

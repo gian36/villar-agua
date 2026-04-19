@@ -655,135 +655,141 @@ function renderFinalizados(){
 }
 
 function imprimirCamion(camId){
-  const cam = cams.find(c=>c.id===camId);
+  const cam=cams.find(c=>c.id===camId);
   if(!cam){showToast('Camión no encontrado');return;}
   const items=[];
   Object.keys(subs).forEach(sid=>{
     subs[sid].pedidos.forEach((p,i)=>{
-      if(asig[sid+'__'+i]===camId) items.push({p,zona:subs[sid].zona,vendedor:subs[sid].vendedor});
+      if(asig[sid+'__'+i]===camId) items.push({p,zona:subs[sid].zona});
     });
   });
   if(!items.length){showToast('Sin clientes asignados');return;}
 
-  const totV = items.reduce((a,x)=>a+x.p.cajas,0);
-  const totP = items.reduce((a,x)=>a+x.p.promo,0);
-  const totD = items.reduce((a,x)=>a+x.p.total,0);
-  const totC = totV+totP;
-  const zonas = [...new Set(items.map(x=>x.zona))].join(', ');
-  const fecha = cam.fechaAsignacion||fechaHoy();
-  const [fy,fm,fd] = fecha.split('-');
-  const meses=['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
-  const fechaStr = fd+'/'+meses[+fm-1]+'/'+fy;
-  const numAsig = cam.asignacionId || generarNumAsig(cam.nombre, fecha);
+  const totV=items.reduce((a,x)=>a+x.p.cajas,0);
+  const totP=items.reduce((a,x)=>a+x.p.promo,0);
+  const totD=items.reduce((a,x)=>a+x.p.total,0);
+  const totC=totV+totP;
+  const zonas=[...new Set(items.map(x=>x.zona))].join(', ');
+  const fecha=cam.fechaAsignacion||fechaHoy();
+  const [fy,fm,fd]=fecha.split('-');
+  const M=['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+  const fechaStr=fd+'/'+M[+fm-1]+'/'+fy;
+  const numAsig=cam.asignacionId||generarNumAsig(cam.nombre,fecha);
 
-  const filas = items.map((x,i)=>{
-    const {p} = x;
-    let flags='';
-    if(p.credito) flags+='<span style="background:#dcfce7;color:#166534;font-size:9px;font-weight:700;padding:1px 5px;border-radius:10px;margin-left:3px">CRED</span>';
-    if(p.ncf)     flags+='<span style="background:#ede9fe;color:#4c1d95;font-size:9px;font-weight:700;padding:1px 5px;border-radius:10px;margin-left:3px">NCF</span>';
-    return `<tr>
-      <td style="text-align:center;color:#64748b;font-size:11px">${i+1}</td>
-      <td style="font-weight:600;font-size:13px">${p.cliente}${flags}</td>
-      <td style="text-align:center;font-weight:700;font-size:14px">${p.cajas}</td>
-      <td style="text-align:center;font-size:13px">${p.promo||''}</td>
-      <td style="text-align:center;font-size:12px">$${p.precio}</td>
-      <td style="text-align:right;font-weight:700;font-size:13px">$${fmt(p.total)}</td>
-      <td style="text-align:center;border:1px solid #cbd5e1;min-width:40px"></td>
-      <td style="min-width:60px;border-bottom:1px solid #e2e8f0"></td>
-    </tr>
-    ${p.nota?`<tr><td></td><td colspan="7" style="font-size:11px;color:#64748b;padding:0 0 4px 4px">📝 ${p.nota}</td></tr>`:''}`;
+  const filas=items.map((x,i)=>{
+    const {p}=x;
+    const badges=(p.credito?'<b style="color:#166534;font-size:7pt">CR</b> ':'')+
+                 (p.ncf?'<b style="color:#4c1d95;font-size:7pt">NCF</b>':'');
+    const sub=(badges?'<br>'+badges:'')+(p.nota?'<br><span style="color:#64748b;font-size:7pt">'+p.nota+'</span>':'');
+    return '<tr>'
+      +'<td>'+(i+1)+'</td>'
+      +'<td>'+p.cliente+sub+'</td>'
+      +'<td>'+p.cajas+'</td>'
+      +'<td>'+(p.promo||'')+'</td>'
+      +'<td>$'+p.precio+'</td>'
+      +'<td>$'+fmt(p.total)+'</td>'
+      +'<td></td><td></td>'
+      +'</tr>';
   }).join('');
 
-  const html = `<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8">
-  <title>Ruta ${numAsig}</title>
-  <style>
-    *{box-sizing:border-box;margin:0;padding:0}
-    body{font-family:Arial,sans-serif;font-size:13px;color:#1e293b;padding:12mm 10mm}
-    .header{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:start;margin-bottom:10px;padding-bottom:10px;border-bottom:2px solid #0a3d6b}
-    .logo{font-size:22px;font-weight:900;color:#0a3d6b;letter-spacing:-1px}
-    .sub{font-size:11px;color:#64748b;margin-top:2px}
-    .num-asig{font-size:26px;font-weight:900;color:#0a3d6b;font-family:monospace;text-align:right}
-    .num-label{font-size:10px;color:#64748b;text-align:right;text-transform:uppercase;letter-spacing:.5px}
-    .meta{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:10px}
-    .meta-box{background:#f1f5f9;border-radius:6px;padding:7px 10px}
-    .meta-label{font-size:9px;text-transform:uppercase;letter-spacing:.5px;color:#64748b;font-weight:700}
-    .meta-val{font-size:15px;font-weight:700;color:#0a3d6b;margin-top:2px}
-    table{width:100%;border-collapse:collapse;margin-bottom:12px}
-    thead tr{background:#0a3d6b;color:white}
-    thead th{padding:6px 8px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;text-align:center}
-    thead th:nth-child(2){text-align:left}
-    tbody tr:nth-child(even){background:#f8fafc}
-    tbody td{padding:5px 8px;border-bottom:1px solid #e2e8f0;vertical-align:middle}
-    tfoot tr{background:#0a3d6b;color:white}
-    tfoot td{padding:7px 8px;font-weight:700;font-size:13px;text-align:center}
-    tfoot td:nth-child(2){text-align:left}
-    .cuadre{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:10px;border-top:2px solid #0a3d6b;padding-top:10px}
-    .cuadre-box{border:1px solid #cbd5e1;border-radius:8px;padding:10px}
-    .cuadre-title{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#0a3d6b;margin-bottom:8px}
-    .cuadre-row{display:flex;justify-content:space-between;font-size:12px;padding:4px 0;border-bottom:1px dashed #e2e8f0}
-    .cuadre-row:last-child{border:none}
-    .cuadre-field{border-bottom:1.5px solid #94a3b8;display:inline-block;min-width:80px;height:16px}
-    .firmas{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-top:14px}
-    .firma-linea{border-bottom:1.5px solid #0a3d6b;margin-bottom:4px;height:28px}
-    .firma-label{font-size:10px;text-transform:uppercase;letter-spacing:.5px;color:#64748b;text-align:center;font-weight:700}
-    @media print{body{padding:6mm 6mm}@page{margin:5mm;size:letter portrait}}
-  </style>
-  </head><body>
-  <div class="header">
-    <div><div class="logo">💧 Villar Agua</div><div class="sub">Hoja de Ruta · Uso del Conductor</div></div>
-    <div><div class="num-label">N° Asignación</div><div class="num-asig">${numAsig}</div></div>
-  </div>
-  <div class="meta">
-    <div class="meta-box"><div class="meta-label">Camión</div><div class="meta-val">${esc(cam.nombre)}</div></div>
-    <div class="meta-box"><div class="meta-label">Chofer</div><div class="meta-val">${esc(cam.chofer)}</div></div>
-    <div class="meta-box"><div class="meta-label">Fecha</div><div class="meta-val">${fechaStr}</div></div>
-    <div class="meta-box"><div class="meta-label">Zonas</div><div class="meta-val" style="font-size:12px">${zonas}</div></div>
-  </div>
-  <table>
-    <thead><tr>
-      <th style="width:26px">#</th>
-      <th style="text-align:left">Cliente</th>
-      <th>V.Prev</th><th>Prom</th><th>$/cj</th><th>Total $</th>
-      <th>Entregado</th><th>Observación</th>
-    </tr></thead>
-    <tbody>${filas}</tbody>
-    <tfoot><tr>
-      <td colspan="2">TOTALES</td>
-      <td>${totV}</td><td>${totP}</td><td>—</td>
-      <td style="text-align:right">$${fmt(totD)}</td>
-      <td colspan="2"></td>
-    </tr></tfoot>
-  </table>
-  <div class="cuadre">
-    <div class="cuadre-box">
-      <div class="cuadre-title">📦 Cuadre de Cajas</div>
-      <div class="cuadre-row"><span>Cajas cargadas al salir</span><span class="cuadre-field"></span></div>
-      <div class="cuadre-row"><span>Cajas vendidas (V)</span><span>${totV}</span></div>
-      <div class="cuadre-row"><span>Promoción entregada (P)</span><span>${totP}</span></div>
-      <div class="cuadre-row"><span>Total a entregar</span><span style="font-weight:700">${totC}</span></div>
-      <div class="cuadre-row"><span>Sobrante físico en camión</span><span class="cuadre-field"></span></div>
-      <div class="cuadre-row" style="font-weight:700"><span>Diferencia</span><span class="cuadre-field"></span></div>
-    </div>
-    <div class="cuadre-box">
-      <div class="cuadre-title">💵 Cuadre de Efectivo</div>
-      <div class="cuadre-row"><span>Total facturado</span><span style="font-weight:700">$${fmt(totD)}</span></div>
-      <div class="cuadre-row"><span>Total cobrado</span><span class="cuadre-field"></span></div>
-      <div class="cuadre-row"><span>— Pago ayudante</span><span class="cuadre-field"></span></div>
-      <div class="cuadre-row"><span>— Combustible</span><span class="cuadre-field"></span></div>
-      <div class="cuadre-row"><span>— Peaje / Otros</span><span class="cuadre-field"></span></div>
-      <div class="cuadre-row"><span>— Créditos / Pendientes</span><span class="cuadre-field"></span></div>
-      <div class="cuadre-row" style="font-weight:700"><span>Total a entregar a caja</span><span class="cuadre-field"></span></div>
-    </div>
-  </div>
-  <div class="firmas">
-    <div><div class="firma-linea"></div><div class="firma-label">Chofer / Firma</div></div>
-    <div><div class="firma-linea"></div><div class="firma-label">Supervisor / Revisó</div></div>
-    <div><div class="firma-linea"></div><div class="firma-label">Caja / Recibió $</div></div>
-  </div>
-  <script>window.onload=()=>window.print();<\/script>
-  </body></html>`;
+  const S='<style>'
+    +'*{box-sizing:border-box;margin:0;padding:0}'
+    +'body{font-family:Arial,Helvetica,sans-serif;font-size:8pt;color:#1e293b}'
+    +'.w{padding:4mm 5mm}'
+    +'.hdr{display:flex;align-items:flex-start;justify-content:space-between;border-bottom:2.5px solid #0a3d6b;padding-bottom:4px;margin-bottom:5px}'
+    +'.brand{display:flex;align-items:center;gap:5px}'
+    +'.drop{font-size:20pt;line-height:1}'
+    +'.co{font-size:11pt;font-weight:900;color:#0a3d6b;letter-spacing:-.3px;line-height:1.15}'
+    +'.co-sub{font-size:7pt;color:#64748b;font-weight:700;text-transform:uppercase;letter-spacing:.5px}'
+    +'.an{text-align:right}.anl{font-size:6.5pt;color:#64748b;text-transform:uppercase;letter-spacing:.5px}'
+    +'.anum{font-size:16pt;font-weight:900;color:#0a3d6b;font-family:monospace;line-height:1}'
+    +'.meta{display:grid;grid-template-columns:repeat(5,1fr);gap:3px;margin-bottom:4px}'
+    +'.mb{background:#f1f5f9;border-radius:3px;padding:3px 5px}'
+    +'.ml{font-size:6.5pt;text-transform:uppercase;color:#64748b;font-weight:700}'
+    +'.mv{font-size:9.5pt;font-weight:700;color:#0a3d6b}'
+    +'table{width:100%;border-collapse:collapse}'
+    +'thead tr{background:#0a3d6b;color:#fff;-webkit-print-color-adjust:exact;print-color-adjust:exact}'
+    +'thead th{padding:3.5px 4px;font-size:7pt;font-weight:700;text-transform:uppercase;text-align:center;white-space:nowrap}'
+    +'thead th:nth-child(2){text-align:left}'
+    +'tbody tr:nth-child(even){background:#f8fafc;-webkit-print-color-adjust:exact;print-color-adjust:exact}'
+    +'tbody td{padding:2.5px 4px;border-bottom:.5px solid #e2e8f0;vertical-align:top;font-size:8pt}'
+    +'tbody td:nth-child(2){max-width:130px}'
+    +'tbody td:nth-child(7){border:1px solid #cbd5e1;min-width:28px}'
+    +'tbody td:nth-child(8){border-bottom:1px solid #e2e8f0;min-width:50px}'
+    +'tfoot tr{background:#0a3d6b;color:#fff;-webkit-print-color-adjust:exact;print-color-adjust:exact}'
+    +'tfoot td{padding:3.5px 4px;font-weight:700;font-size:8pt;text-align:center}'
+    +'tfoot td:nth-child(2){text-align:left}'
+    +'.bot{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:5px;border-top:2px solid #0a3d6b;padding-top:5px}'
+    +'.cb{border:1px solid #cbd5e1;border-radius:4px;padding:5px 7px}'
+    +'.ct{font-size:7.5pt;font-weight:700;text-transform:uppercase;color:#0a3d6b;margin-bottom:3px}'
+    +'.cr{display:flex;justify-content:space-between;font-size:7.5pt;padding:2px 0;border-bottom:.5px dashed #e2e8f0}'
+    +'.cr:last-child{border:none}'
+    +'.cf{border-bottom:1px solid #94a3b8;display:inline-block;min-width:65px;height:13px}'
+    +'.cfb{font-weight:700}'
+    +'.fi{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-top:5px}'
+    +'.fl{border-bottom:1.5px solid #0a3d6b;height:22px;margin-bottom:2px}'
+    +'.fll{font-size:6.5pt;text-transform:uppercase;color:#64748b;text-align:center;font-weight:700}'
+    +'@media print{body{margin:0}@page{margin:4mm;size:letter portrait}}'
+    +'</style>';
 
-  const w = window.open('','_blank');
+  const html='<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><title>Ruta '+numAsig+'</title>'+S+'</head>'
+    +'<body><div class="w">'
+    +'<div class="hdr">'
+    +'<div class="brand"><div class="drop">💧</div>'
+    +'<div><div class="co">Villar &amp; Villar Logistics</div>'
+    +'<div class="co-sub">Hoja de Ruta · Uso del Conductor</div></div></div>'
+    +'<div class="an"><div class="anl">N° Asignación</div><div class="anum">'+numAsig+'</div></div>'
+    +'</div>'
+    +'<div class="meta">'
+    +'<div class="mb"><div class="ml">Camión</div><div class="mv">'+esc(cam.nombre)+'</div></div>'
+    +'<div class="mb"><div class="ml">Chofer</div><div class="mv">'+esc(cam.chofer)+'</div></div>'
+    +'<div class="mb"><div class="ml">Fecha</div><div class="mv">'+fechaStr+'</div></div>'
+    +'<div class="mb"><div class="ml">Zonas</div><div class="mv" style="font-size:7.5pt">'+zonas+'</div></div>'
+    +'<div class="mb"><div class="ml">Total cajas</div><div class="mv" style="color:#166534">'+totC+'</div></div>'
+    +'</div>'
+    +'<table>'
+    +'<thead><tr>'
+    +'<th style="width:16px">#</th>'
+    +'<th style="text-align:left">Cliente</th>'
+    +'<th>V.Prev</th><th>Prom</th><th>$/cj</th><th>Total $</th>'
+    +'<th>Entregó</th><th>Observación</th>'
+    +'</tr></thead>'
+    +'<tbody>'+filas+'</tbody>'
+    +'<tfoot><tr><td colspan="2">TOTALES</td><td>'+totV+'</td><td>'+totP+'</td><td>—</td>'
+    +'<td style="text-align:right">$'+fmt(totD)+'</td><td colspan="2"></td></tr></tfoot>'
+    +'</table>'
+    +'<div class="bot">'
+    +'<div class="cb"><div class="ct">📦 Cuadre de Cajas</div>'
+    +'<div class="cr"><span>Sobrante día anterior en camión</span><span class="cf"></span></div>'
+    +'<div class="cr"><span>+ Cajas cargadas hoy</span><span class="cf"></span></div>'
+    +'<div class="cr cfb"><span>= Total disponible</span><span class="cf"></span></div>'
+    +'<div class="cr"><span>Cajas vendidas (V)</span><span>'+totV+'</span></div>'
+    +'<div class="cr"><span>Promoción entregada (P)</span><span>'+totP+'</span></div>'
+    +'<div class="cr cfb"><span>Total entregado</span><span>'+totC+'</span></div>'
+    +'<div class="cr"><span>Sobrante físico (regreso)</span><span class="cf"></span></div>'
+    +'<div class="cr cfb"><span>Diferencia cajas</span><span class="cf"></span></div>'
+    +'</div>'
+    +'<div class="cb"><div class="ct">💵 Cuadre de Efectivo</div>'
+    +'<div class="cr cfb"><span>Total facturado</span><span>$'+fmt(totD)+'</span></div>'
+    +'<div class="cr"><span>Efectivo cobrado</span><span class="cf"></span></div>'
+    +'<div class="cr"><span>Transferencias</span><span class="cf"></span></div>'
+    +'<div class="cr"><span>Créditos / Pendientes</span><span class="cf"></span></div>'
+    +'<div class="cr"><span>— Pago ayudante</span><span class="cf"></span></div>'
+    +'<div class="cr"><span>— Combustible</span><span class="cf"></span></div>'
+    +'<div class="cr"><span>— Peaje / Otros</span><span class="cf"></span></div>'
+    +'<div class="cr cfb"><span>Total a entregar a caja</span><span class="cf"></span></div>'
+    +'</div>'
+    +'</div>'
+    +'<div class="fi">'
+    +'<div><div class="fl"></div><div class="fll">Chofer / Firma</div></div>'
+    +'<div><div class="fl"></div><div class="fll">Supervisor / Revisó</div></div>'
+    +'<div><div class="fl"></div><div class="fll">Caja / Recibió $</div></div>'
+    +'</div>'
+    +'</div>'
+    +'<script>window.onload=()=>window.print();<\/script>'
+    +'</body></html>';
+
+  const w=window.open('','_blank');
   w.document.write(html);
   w.document.close();
 }
