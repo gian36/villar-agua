@@ -225,6 +225,7 @@ html,body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-se
     <div id="zona-resumen">—</div>
   </div>
   <button class="btn btn-blue" onclick="guardarCuadre()">💾 Guardar cuadre</button>
+  <button class="btn" style="background:#166534;color:white" onclick="exportarExcel()">📊 Exportar fila para Excel</button>
   <button class="btn" style="background:var(--gris2);color:var(--texto);font-size:14px" onclick="volverDashboard()">‹ Volver al listado</button>
   <div style="height:20px"></div>
 </div>
@@ -736,6 +737,217 @@ function fmtFecha(f){
 function fmt(n){return Number(n).toLocaleString('es-DO');}
 function esc(s){if(!s)return'';const d=document.createElement('div');d.textContent=s;return d.innerHTML;}
 function setText(id,v){const e=document.getElementById(id);if(e)e.textContent=v;}
+function exportarExcel(){
+  if(!activeCamId){showToast('Abre un cuadre primero');return;}
+  const cam=cams.find(c=>c.id===activeCamId);
+  if(!cam){showToast('Camión no encontrado');return;}
+
+  const items=getItemsCam(activeCamId);
+  if(!items.length){showToast('Sin clientes asignados');return;}
+
+  const g=cuadreLocal.gastos||{};
+  const fecha=cam.fechaAsignacion||new Date().toISOString().slice(0,10);
+  const [fy,fm,fd]=fecha.split('-');
+  const dias=['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];
+  const diaSem=dias[new Date(fecha+'T12:00:00').getDay()];
+  const mesesN=['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+  const fechaStr=fd+'/'+mesesN[+fm-1]+'/'+fy;
+  const numAsig=cam.asignacionId||(cam.nombre+'-'+fecha.replace(/-/g,''));
+
+  // Aggregate real totals
+  let totRealV=0,totRealP=0,totRealD=0;
+  // Per-zone aggregates
+  const zonaMap={};
+  items.forEach((x,i)=>{
+    const ci=cuadreLocal['c'+i]||{};
+    const rV=ci.realCajas!==undefined?ci.realCajas:x.p.cajas;
+    const rP=ci.realProm!==undefined?ci.realProm:x.p.promo;
+    const rD=rV*x.p.precio;
+    totRealV+=rV; totRealP+=rP; totRealD+=rD;
+    const z=x.zona||'Sin zona';
+    if(!zonaMap[z]) zonaMap[z]={v$:0,vcaj:0,vprom:0};
+    zonaMap[z].v$+=rD; zonaMap[z].vcaj+=rV; zonaMap[z].vprom+=rP;
+  });
+
+  const priceProm=totRealV>0?Math.round(totRealD/totRealV*100)/100:0;
+
+  // ── Build tab-separated row matching DATA columns exactly
+  // id_cols: Fecha, Mes, Año, Dia_Semana, ID_Cuadre, Camion, Zona_Principal
+  const zonaPrincipal=[...new Set(items.map(x=>x.zona))].join('+');
+  const row=[
+    fechaStr,                          // Fecha
+    +fm,                               // Mes
+    +fy,                               // Año
+    diaSem,                            // Dia_Semana
+    numAsig,                           // ID_Cuadre
+    cam.nombre,                        // Camion
+    zonaPrincipal,                     // Zona_Principal
+    // inv_cols
+    g.anterior||0,                     // Sobrante_Anterior
+    items.reduce((a,x)=>a+x.p.cajas,0),// Cajas_Compradas (preventa)
+    '',                                // Precio_Compra_Unitario (fill in Excel)
+    '',                                // Costo_Compra_Total (fill in Excel)
+    g.sobrante||0,                     // Sobrante_Final
+  ];
+
+  // Ventas por zona — 13 zonas × 3 cols
+  const ZONAS=['Zona 1','Zona 2','Zona 3','Zona 4','Zona 5','Zona 6',
+               'Zona 7','Zona 8','Zona 9','Zona 10','Zona 11','Zona 12','Zona 13'];
+  ZONAS.forEach(z=>{
+    const d=zonaMap[z]||{v$:0,vcaj:0,vprom:0};
+    row.push(d.v$||0, d.vcaj||0, d.vprom||0);
+  });
+
+  // vtot_cols
+  row.push(totRealD, totRealV, totRealP, priceProm);
+
+  // sis_cols
+  row.push('','','');  // Cajas_Sistema, Venta_Sistema_$, Recupero — manual
+
+  // cobro_cols
+  row.push(g.efectivo||0, g.transferencias||0, g.creditos||0, g.transferencias||0);
+
+  // gruta_cols
+  row.push(
+    g.combustible||0, g.peaje||0, g.ayudante||0, 0,  // G_Combustible,Peaje,Ayudante,Mantenimiento
+    0,                                                  // G_Descuadre
+    g.otros||0,                                        // G_Otros_Ruta
+    (+(g.combustible||0))+(+(g.peaje||0))+(+(g.ayudante||0))+(+(g.otros||0)) // Total_Gastos_Ruta
+  );
+
+  // gofic_cols — office expenses not captured in cuadre, leave blank
+  row.push(0,0,0,0,0,0,0);  // G_Luz,Internet,Alquiler,Nomina,Seguros,Misc,Total_Gastos_Oficina
+
+  // bal_cols
+  row.push('','','','',''); // Comisiones,Retiros,Pagos_Facturas,Otros_Ingresos,Notas
+
+  // ── Format output
+  const tsv=row.map(v=>{
+    if(v===''||v===null||v===undefined) return '';
+    if(typeof v==='number') return v.toString();
+    return String(v).replace(/	/g,' ');
+  }).join('	');
+
+  // ── Build human-readable export panel
+  const h=new Date().toLocaleTimeString('es-DO',{hour:'2-digit',minute:'2-digit'});
+  const zonaLines=Object.entries(zonaMap).map(([z,d])=>
+    `  ${z}: V:${d.vcaj} P:${d.vprom} $${fmt(d.v$)}`).join('
+');
+
+  const resumen=
+    `=== FILA PARA DATA — ${numAsig} ===
+`+
+    `Fecha: ${fechaStr} | Mes: ${+fm} | Año: ${+fy} | ${diaSem}
+`+
+    `Camión: ${cam.nombre} | Zonas: ${zonaPrincipal}
+`+
+    `─────────────────────────────────
+`+
+    `INVENTARIO
+`+
+    `  Sobrante anterior: ${g.anterior||0}
+`+
+    `  Sobrante final:    ${g.sobrante||0}
+`+
+    `VENTAS REALES
+`+
+    `  Cajas vendidas: ${totRealV} | Promo: ${totRealP}
+`+
+    `  Total $: $${fmt(totRealD)} | $/cj prom: $${fmt(priceProm)}
+`+
+    `POR ZONA:
+${zonaLines}
+`+
+    `COBROS
+`+
+    `  Efectivo: $${fmt(g.efectivo||0)}
+`+
+    `  Transferencia: $${fmt(g.transferencias||0)}
+`+
+    `  Crédito/Pendiente: $${fmt(g.creditos||0)}
+`+
+    `GASTOS RUTA
+`+
+    `  Combustible: $${fmt(g.combustible||0)}
+`+
+    `  Peaje: $${fmt(g.peaje||0)}
+`+
+    `  Ayudante: $${fmt(g.ayudante||0)}
+`+
+    `  Otros: $${fmt(g.otros||0)}
+`+
+    `─────────────────────────────────
+`+
+    `⚠ Precio compra, Gastos Oficina, Sistema Paralelo,
+`+
+    `  Comisiones y Retiros: completar en Excel.
+
+`+
+    `[FILA TSV — PEGAR EN DATA]
+`+tsv;
+
+  // Show export modal
+  mostrarExportModal(resumen, tsv);
+}
+
+function mostrarExportModal(resumen, tsv){
+  const existing=document.getElementById('export-modal');
+  if(existing) existing.remove();
+
+  const modal=document.createElement('div');
+  modal.id='export-modal';
+  modal.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:600;display:flex;align-items:flex-end;justify-content:center';
+  modal.innerHTML=`
+    <div style="background:white;border-radius:16px 16px 0 0;padding:20px 16px;width:100%;max-height:85vh;overflow-y:auto">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+        <div style="font-size:16px;font-weight:700;color:var(--azul)">📊 Exportar para Excel</div>
+        <button onclick="document.getElementById('export-modal').remove()"
+          style="background:none;border:none;font-size:24px;color:var(--muted);cursor:pointer">×</button>
+      </div>
+      <div style="font-size:12px;color:var(--muted);margin-bottom:8px">
+        Resumen del cuadre. Los campos en ⚠ se completan manualmente en Excel.
+      </div>
+      <div id="export-resumen" style="background:var(--gris);border:1px solid var(--borde);border-radius:8px;
+        padding:12px;font-size:11px;font-family:'Courier New',monospace;white-space:pre-wrap;
+        word-break:break-word;max-height:38vh;overflow-y:auto;margin-bottom:12px">${resumen}</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
+        <button onclick="copiarTSV()" style="padding:13px;border:none;border-radius:10px;
+          background:var(--azul);color:white;font-size:14px;font-weight:700;cursor:pointer">
+          📋 Copiar fila TSV
+        </button>
+        <button onclick="copiarResumenExport()" style="padding:13px;border:none;border-radius:10px;
+          background:#166534;color:white;font-size:14px;font-weight:700;cursor:pointer">
+          📄 Copiar resumen
+        </button>
+      </div>
+      <div style="font-size:12px;color:var(--muted);background:#fef3c7;border-radius:8px;padding:10px">
+        <strong>Cómo pegarlo en Excel:</strong><br>
+        1. Abre el Excel → hoja <strong>DATA</strong><br>
+        2. Haz clic en la primera celda de la próxima fila vacía (columna A)<br>
+        3. Pega con <strong>Ctrl+V</strong> — los datos llenan todas las columnas automáticamente<br>
+        4. Completa los campos en blanco (precio compra, sistema paralelo, etc.)
+      </div>
+    </div>`;
+
+  // Store tsv for copy buttons
+  modal._tsv = tsv;
+  window._exportTSV = tsv;
+  window._exportResumen = document.getElementById ? resumen : '';
+  document.body.appendChild(modal);
+}
+
+function copiarTSV(){
+  const txt=window._exportTSV||'';
+  if(navigator.clipboard) navigator.clipboard.writeText(txt).then(()=>showToast('Fila TSV copiada ✓'));
+  else{const t=document.createElement('textarea');t.value=txt;t.style.position='fixed';t.style.opacity='0';document.body.appendChild(t);t.select();document.execCommand('copy');document.body.removeChild(t);showToast('Fila TSV copiada ✓');}
+}
+
+function copiarResumenExport(){
+  const txt=document.getElementById('export-resumen')?.textContent||'';
+  if(navigator.clipboard) navigator.clipboard.writeText(txt).then(()=>showToast('Resumen copiado ✓'));
+  else{const t=document.createElement('textarea');t.value=txt;t.style.position='fixed';t.style.opacity='0';document.body.appendChild(t);t.select();document.execCommand('copy');document.body.removeChild(t);showToast('Resumen copiado ✓');}
+}
+
 function showToast(m){const t=document.getElementById('toast');t.textContent=m;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2500);}
 </script>
 </body>
