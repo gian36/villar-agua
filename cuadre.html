@@ -144,7 +144,16 @@ html,body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-se
 
 <!-- PANTALLA 1: DASHBOARD -->
 <div class="screen active" id="screen-dashboard">
-  <div id="dashboard-list"></div>
+  <div style="margin:8px 12px;background:white;border-radius:12px;padding:12px;box-shadow:0 1px 4px rgba(0,0,0,.1)">
+      <div style="font-size:12px;font-weight:700;color:var(--azul);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Jornada a cuadrar</div>
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+        <input type="date" id="jornada-fecha" style="font-size:15px;padding:8px 12px;border:1.5px solid var(--borde);border-radius:8px;flex:1"
+          onchange="cambiarJornada()">
+        <button onclick="cambiarJornada()" style="padding:9px 16px;background:var(--azul2);color:white;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer">Cargar</button>
+      </div>
+      <div id="jornada-info" style="margin-top:6px;font-size:12px;color:var(--muted)">Selecciona la fecha de la jornada a cuadrar</div>
+    </div>
+    <div id="dashboard-list"></div>
 </div>
 
 <!-- PANTALLA 2: CUADRE DE CAMION -->
@@ -233,36 +242,55 @@ html,body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-se
 <div class="toast" id="toast"></div>
 
 <script>
+
+/* ── JSONBIN ── */
 const JKEY='$2a$10$q4eNs6WXxS3oXb25mIeINuoiZaCd69ruJI.IZhZGcstCRL4xDOPfu';
 const JBIN='69e249f336566621a8c3c97c';
 const JURL='https://api.jsonbin.io/v3/b/'+JBIN;
 
 async function leerBin(){
   let r;
-  try{
-    r=await fetch(JURL+'/latest',{headers:{'X-Master-Key':JKEY}});
-  }catch(netErr){
-    throw new Error('Sin conexión a internet: '+netErr.message);
-  }
-  if(r.status===401) throw new Error('API Key incorrecta (401) — verificar en jsonbin.io');
-  if(r.status===404) throw new Error('Bin ID no encontrado (404) — verificar en jsonbin.io');
-  if(!r.ok) throw new Error('Error del servidor: HTTP '+r.status);
+  try{ r=await fetch(JURL+'/latest',{headers:{'X-Master-Key':JKEY}}); }
+  catch(e){ throw new Error('Sin conexión: '+e.message); }
+  if(r.status===401) throw new Error('API Key incorrecta (401)');
+  if(r.status===404) throw new Error('Bin ID no encontrado (404)');
+  if(!r.ok) throw new Error('Error HTTP '+r.status);
   const j=await r.json();
-  if(!j.record) throw new Error('Respuesta vacía del servidor — el bin puede estar vacío');
+  if(!j.record) throw new Error('Bin vacío');
   return j.record;
 }
 async function escribirBin(d){
-  const r=await fetch(JURL,{method:'PUT',headers:{'Content-Type':'application/json','X-Master-Key':JKEY},body:JSON.stringify(d)});
-  if(!r.ok) throw new Error(r.status);
+  const r=await fetch(JURL,{method:'PUT',
+    headers:{'Content-Type':'application/json','X-Master-Key':JKEY},
+    body:JSON.stringify(d)});
+  if(!r.ok) throw new Error('Error guardando: '+r.status);
 }
 
-let subs={}, cams=[], asig={}, cuadres={};
+/* ── JORNADA HELPERS ── */
+function hoy(){ const d=new Date(); const p=n=>String(n).padStart(2,'0'); return d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate()); }
+function fmtJornada(f){ if(!f)return'—'; const[y,m,d]=f.split('-'); const M=['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic']; return d+'/'+M[+m-1]+'/'+y; }
+function getJornada(bin, fecha){ return (bin.jornadas&&bin.jornadas[fecha])||{pedidos:{},asignaciones:{},cuadres:{}}; }
+function setJornada(bin, fecha, data){ if(!bin.jornadas) bin.jornadas={}; bin.jornadas[fecha]=data; }
+function listarJornadas(bin){
+  if(!bin.jornadas) return [];
+  return Object.keys(bin.jornadas).sort().reverse(); // newest first
+}
+function limpiarJornadasViejas(bin, keepDays=45){
+  if(!bin.jornadas) return;
+  const cutoff=new Date(); cutoff.setDate(cutoff.getDate()-keepDays);
+  const cut=cutoff.toISOString().slice(0,10);
+  Object.keys(bin.jornadas).forEach(f=>{ if(f<cut) delete bin.jornadas[f]; });
+}
+
+let subs={}, cams=[], asig={}, cuadres={}, jornadaActiva=hoy(), binCache={};
 let binData={};
 let activeCamId=null;
 // cuadreLocal: { clienteIdx: {realCajas, realProm, cobrado, obs}, gastos:{...}, cargadas, sobrante, efectivo, creditos }
 let cuadreLocal={};
 
 window.addEventListener('DOMContentLoaded',()=>{
+  const jf=document.getElementById('jornada-fecha');
+  if(jf) jf.value=hoy();
   const h=new Date();
   const M=['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
   document.getElementById('top-sub').textContent='Villar · '+h.getDate()+'/'+M[h.getMonth()]+'/'+h.getFullYear();
@@ -273,65 +301,35 @@ async function cargarDatos(){
   const btn=document.getElementById('btn-ref');
   const cont=document.getElementById('dashboard-list');
   btn.textContent='⟳ ...';
-  cont.innerHTML='<div style="text-align:center;padding:40px 20px;color:var(--muted)">'+
-    '<div style="font-size:28px;margin-bottom:10px">⟳</div>Conectando con el servidor...</div>';
+  cont.innerHTML='<div style="text-align:center;padding:30px;color:var(--muted)">Conectando...</div>';
   try{
-    binData = await leerBin();
-    subs    = binData.pedidos      || {};
-    asig    = binData.asignaciones || {};
-    cams    = binData.camiones      || [];
-    cuadres = binData.cuadres       || {};
-
-    // Diagnostic: show what was loaded
-    const nSubs = Object.keys(subs).length;
-    const nCams = cams.length;
-    const nAsig = Object.keys(asig).length;
-    console.log(`Cargado: ${nSubs} preventas, ${nCams} camiones, ${nAsig} asignaciones`);
-
-    btn.textContent='⟳ Actualizar';
-    // Show brief success if nothing to display
-    renderDashboard();
-    // If dashboard is empty, show diagnostic hint
-    const activeCams=cams.filter(cam=>Object.keys(asig).some(k=>asig[k]===cam.id));
-    if(activeCams.length===0 && Object.keys(subs).length===0){
-      const hint=document.createElement('div');
-      hint.style.cssText='margin:8px 12px;padding:10px 14px;background:var(--celeste);border-radius:10px;font-size:12px;color:var(--azul)';
-      hint.innerHTML='<strong>ℹ Bin conectado correctamente.</strong> No hay asignaciones aún. '+
-        'El encargado debe finalizar las asignaciones en la app de encargado para que aparezcan aquí.'+
-        '<br><span style="opacity:.7">Preventas en bin: '+Object.keys(subs).length+
-        ' | Camiones: '+cams.length+
-        ' | Asignaciones: '+Object.keys(asig).length+'</span>';
-      const dashList=document.getElementById('dashboard-list');
-      if(dashList) dashList.appendChild(hint);
-    }
-
+    binCache=await leerBin();
+    cams=(binCache.camiones&&binCache.camiones.length)?binCache.camiones:[];
+    const jf=document.getElementById('jornada-fecha');
+    if(jf&&!jf.value){ jf.value=jornadaActiva; }
+    cargarJornada();
   }catch(e){
-    console.error('Error cargando datos:', e);
-    btn.textContent='⟳ Reintentar';
-    // Show detailed error in dashboard area
-    const isNetworkErr = e.message && (e.message.includes('fetch') || e.message.includes('network') || e.message.includes('Failed'));
-    cont.innerHTML=`
-      <div style="margin:16px;background:#fee2e2;border-radius:12px;padding:20px;border-left:4px solid #991b1b">
-        <div style="font-size:16px;font-weight:700;color:#991b1b;margin-bottom:8px">⚠ Error al cargar datos</div>
-        <div style="font-size:13px;color:#7f1d1d;margin-bottom:12px">${e.message||'Error desconocido'}</div>
-        <div style="font-size:12px;color:#991b1b;background:#fef2f2;border-radius:8px;padding:10px;margin-bottom:12px">
-          <strong>Posibles causas:</strong><br>
-          • Sin conexión a internet<br>
-          • Clave de JSONBin expirada o incorrecta<br>
-          • El bin fue eliminado o es inaccesible<br>
-          • JSONBin está caído (revisar jsonbin.io)
-        </div>
-        <button onclick="cargarDatos()" style="width:100%;padding:12px;background:#991b1b;color:white;border:none;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer">
-          ⟳ Intentar de nuevo
-        </button>
-      </div>
-      <div style="margin:0 16px">
-        <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);padding:8px 0 4px">Diagnóstico de conexión</div>
-        <div id="diag-result" style="background:var(--gris);border-radius:8px;padding:12px;font-size:12px;font-family:monospace;color:var(--texto)">Ejecutando prueba...</div>
-      </div>`;
-    // Run connection test
-    diagnosticarConexion();
+    cont.innerHTML='<div style="margin:16px;background:#fee2e2;border-radius:12px;padding:16px;color:#991b1b"><strong>⚠ '+e.message+'</strong><br><button onclick="cargarDatos()" style="margin-top:10px;padding:8px 16px;background:#991b1b;color:white;border:none;border-radius:8px;cursor:pointer">Reintentar</button></div>';
+    console.error(e);
   }
+  btn.textContent='⟳';
+}
+
+function cambiarJornada(){
+  const jf=document.getElementById('jornada-fecha');
+  if(jf&&jf.value) jornadaActiva=jf.value;
+  cargarJornada();
+}
+
+function cargarJornada(){
+  const j=getJornada(binCache, jornadaActiva);
+  subs=j.pedidos||{};
+  asig=j.asignaciones||{};
+  cuadres=j.cuadres||{};
+  const info=document.getElementById('jornada-info');
+  const nCams=Object.keys(asig).length;
+  if(info) info.textContent='Jornada: '+fmtJornada(jornadaActiva)+' · '+nCams+' asignaciones';
+  renderDashboard(); actualizarStats();
 }
 
 async function diagnosticarConexion(){
@@ -375,8 +373,11 @@ async function diagnosticarConexion(){
 }
 
 async function guardarBin(){
-  binData.cuadres = cuadres;
-  await escribirBin(binData);
+  limpiarJornadasViejas(binCache);
+  const j=getJornada(binCache, jornadaActiva);
+  j.cuadres=cuadres; j.pedidos=subs; j.asignaciones=asig;
+  setJornada(binCache, jornadaActiva, j);
+  await escribirBin(binCache);
 }
 
 /* ── DASHBOARD ── */
@@ -1050,6 +1051,7 @@ function copiarResumenExport(){
 }
 
 function showToast(m){const t=document.getElementById('toast');t.textContent=m;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2500);}
+
 </script>
 </body>
 </html>

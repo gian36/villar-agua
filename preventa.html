@@ -789,35 +789,47 @@ function esc(s) {
   d.textContent = s; return d.innerHTML;
 }
 
-/* ============================================================
-   JSONBIN CONFIG
-============================================================ */
-const JSONBIN_KEY = '$2a$10$q4eNs6WXxS3oXb25mIeINuoiZaCd69ruJI.IZhZGcstCRL4xDOPfu';
-const JSONBIN_BIN = '69e249f336566621a8c3c97c';
-const JSONBIN_URL = 'https://api.jsonbin.io/v3/b/' + JSONBIN_BIN;
 
-async function leerBin() {
-  const r = await fetch(JSONBIN_URL + '/latest', {
-    headers: { 'X-Master-Key': JSONBIN_KEY }
-  });
-  if (!r.ok) throw new Error('Error leyendo datos: ' + r.status);
-  const j = await r.json();
+/* ── JSONBIN ── */
+const JKEY='$2a$10$q4eNs6WXxS3oXb25mIeINuoiZaCd69ruJI.IZhZGcstCRL4xDOPfu';
+const JBIN='69e249f336566621a8c3c97c';
+const JURL='https://api.jsonbin.io/v3/b/'+JBIN;
+
+async function leerBin(){
+  let r;
+  try{ r=await fetch(JURL+'/latest',{headers:{'X-Master-Key':JKEY}}); }
+  catch(e){ throw new Error('Sin conexión: '+e.message); }
+  if(r.status===401) throw new Error('API Key incorrecta (401)');
+  if(r.status===404) throw new Error('Bin ID no encontrado (404)');
+  if(!r.ok) throw new Error('Error HTTP '+r.status);
+  const j=await r.json();
+  if(!j.record) throw new Error('Bin vacío');
   return j.record;
 }
-
-async function escribirBin(data) {
-  const r = await fetch(JSONBIN_URL, {
-    method: 'PUT',
-    headers: { 'Content-Type': 'application/json', 'X-Master-Key': JSONBIN_KEY },
-    body: JSON.stringify(data)
-  });
-  if (!r.ok) throw new Error('Error guardando datos: ' + r.status);
-  return r.json();
+async function escribirBin(d){
+  const r=await fetch(JURL,{method:'PUT',
+    headers:{'Content-Type':'application/json','X-Master-Key':JKEY},
+    body:JSON.stringify(d)});
+  if(!r.ok) throw new Error('Error guardando: '+r.status);
 }
 
-/* ============================================================
-   ENVIAR AL SISTEMA (JSONBin)
-============================================================ */
+/* ── JORNADA HELPERS ── */
+function hoy(){ const d=new Date(); const p=n=>String(n).padStart(2,'0'); return d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate()); }
+function fmtJornada(f){ if(!f)return'—'; const[y,m,d]=f.split('-'); const M=['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic']; return d+'/'+M[+m-1]+'/'+y; }
+function getJornada(bin, fecha){ return (bin.jornadas&&bin.jornadas[fecha])||{pedidos:{},asignaciones:{},cuadres:{}}; }
+function setJornada(bin, fecha, data){ if(!bin.jornadas) bin.jornadas={}; bin.jornadas[fecha]=data; }
+function listarJornadas(bin){
+  if(!bin.jornadas) return [];
+  return Object.keys(bin.jornadas).sort().reverse(); // newest first
+}
+function limpiarJornadasViejas(bin, keepDays=45){
+  if(!bin.jornadas) return;
+  const cutoff=new Date(); cutoff.setDate(cutoff.getDate()-keepDays);
+  const cut=cutoff.toISOString().slice(0,10);
+  Object.keys(bin.jornadas).forEach(f=>{ if(f<cut) delete bin.jornadas[f]; });
+}
+
+/* ── ENVIAR AL SISTEMA (por jornada) ── */
 async function enviarPedidoSistema() {
   if (pedidos.length === 0) { showToast('No hay pedidos para enviar'); return; }
   const btn    = document.getElementById('btn-enviar-pedido');
@@ -825,41 +837,37 @@ async function enviarPedidoSistema() {
   btn.textContent = 'Enviando...';
   btn.disabled = true;
   status.style.display = 'none';
-
   try {
     const fdRaw = document.getElementById('setup-fecha').value;
-    const sid = vendedor.replace(/\s/g,'_') + '_' + zona.replace(/\s/g,'_');
+    const jornadaFecha = fdRaw; // date of the preventa = jornada key
+    const sid = vendedor.replace(/\s+/g,'_')+'_'+zona.replace(/\s+/g,'_');
     const submission = {
-      id: sid, vendedor, zona, fecha: fdRaw,
+      id:sid, vendedor, zona, fecha:fdRaw,
       enviado: new Date().toISOString(),
-      pedidos: pedidos.map(p => ({...p})),
+      pedidos: pedidos.map(p=>({...p})),
       totalCajas:  pedidos.reduce((a,p)=>a+p.cajas,0),
       totalPromo:  pedidos.reduce((a,p)=>a+p.promo,0),
       totalDinero: pedidos.reduce((a,p)=>a+p.total,0),
-      asignado: false
     };
-
-    // Read → merge → write
-    let bin = {};
-    try { bin = await leerBin(); } catch(e) { bin = { pedidos:{}, asignaciones:{}, camiones:[] }; }
-    if (!bin.pedidos) bin.pedidos = {};
-    bin.pedidos[sid] = submission;
+    let bin={};
+    try{ bin=await leerBin(); }catch(e){ bin={jornadas:{},camiones:[]}; }
+    limpiarJornadasViejas(bin);
+    const j=getJornada(bin, jornadaFecha);
+    if(!j.pedidos) j.pedidos={};
+    j.pedidos[sid]=submission;
+    setJornada(bin, jornadaFecha, j);
+    // preserve camiones at root level
     await escribirBin(bin);
-
-    status.style.display = 'block';
-    status.style.background = '#dcfce7';
-    status.style.color = '#166534';
-    status.textContent = '✓ Pedido enviado al encargado correctamente';
-    btn.textContent = '✓ Pedido enviado';
-    btn.style.background = '#166534';
+    status.style.display='block';
+    status.style.background='#dcfce7'; status.style.color='#166534';
+    status.textContent='✓ Pedido enviado — Jornada '+fmtJornada(jornadaFecha);
+    btn.textContent='✓ Enviado'; btn.style.background='#166534';
     showToast('Pedido enviado ✓');
   } catch(err) {
-    status.style.display = 'block';
-    status.style.background = '#fee2e2';
-    status.style.color = '#991b1b';
-    status.textContent = 'Error de conexión. Verifica internet e intenta de nuevo.';
-    btn.textContent = 'Reintentar envío';
-    btn.disabled = false;
+    status.style.display='block';
+    status.style.background='#fee2e2'; status.style.color='#991b1b';
+    status.textContent='Error de conexión. Usa WhatsApp como respaldo.';
+    btn.textContent='Reintentar envío'; btn.disabled=false;
     console.error(err);
   }
 }
