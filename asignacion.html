@@ -693,10 +693,11 @@ async function agregarManual(){
   const pre=parseInt(document.getElementById('m-pre').value)||0;
   if(!cli){showToast('Escribe el nombre del cliente');return;}
   if(!caj&&!pro){showToast('Ingresa cajas o promoción');return;}
+  if(!zona) showToast('Sin zona — se agregará como Manual');
   const p={id:Date.now(),cliente:cli,cajas:caj,promo:pro,precio:pre,total:caj*pre,credito:false,ncf:false,rnc:'',nota:''};
   const ek=Object.keys(allSubs).find(k=>allSubs[k].zona===zona&&allSubs[k].vendedor===vend);
   if(ek){allSubs[ek].pedidos.push(p);allSubs[ek].totalCajas+=caj;allSubs[ek].totalPromo+=pro;allSubs[ek].totalDinero+=p.total;}
-  else{const jornadaKey=hoy()+'__manual_'+Date.now();allSubs[jornadaKey]={id:sid,vendedor:vend,zona,fecha:new Date().toISOString().slice(0,10),enviado:new Date().toISOString(),pedidos:[p],totalCajas:caj,totalPromo:pro,totalDinero:p.total,asignado:false,jornadaPedido:hoy()};}
+  else{const jornadaKey=hoy()+'__manual_'+Date.now();allSubs[jornadaKey]={id:jornadaKey,vendedor:vend,zona:zona||'Manual',fecha:new Date().toISOString().slice(0,10),enviado:new Date().toISOString(),pedidos:[p],totalCajas:caj,totalPromo:pro,totalDinero:p.total,asignado:false,jornadaPedido:hoy()};}
   await guardar();
   ['m-zona','m-vend','m-cli','m-caj','m-pro'].forEach(id=>{document.getElementById(id).value='';});
   renderPedidos();actualizarStats();showToast('Cliente agregado ✓');
