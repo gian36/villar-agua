@@ -144,6 +144,9 @@ input:focus,select:focus{border-color:var(--azul2);background:white}
 
 <!-- TAB PEDIDOS -->
 <div class="screen active" id="screen-pedidos">
+  <!-- Alertas de jornadas anteriores con pendientes -->
+  <div id="alertas-anteriores"></div>
+
   <div class="stats-row">
     <div class="stat"><div class="stat-v" id="st-prev">0</div><div class="stat-l">Preventas</div></div>
     <div class="stat"><div class="stat-v" id="st-cli">0</div><div class="stat-l">Clientes</div></div>
@@ -151,7 +154,7 @@ input:focus,select:focus{border-color:var(--azul2);background:white}
     <div class="stat"><div class="stat-v" id="st-sin" style="color:var(--rojo)">0</div><div class="stat-l">Sin asignar</div></div>
   </div>
   <div id="alerta" style="display:none" class="alert"></div>
-  <div style="font-size:12px;color:var(--muted);text-align:center;padding:2px 16px 8px">Toca 🚛 para asignar toda la ruta, o un cliente para asignarlo individualmente</div>
+  <div style="font-size:12px;color:var(--muted);text-align:center;padding:2px 16px 6px">Toca 🚛 para asignar toda la ruta, o un cliente para asignarlo individualmente</div>
   <div id="prev-list"></div>
 
   <div class="sec-label">Agregar cliente / pedido tardío</div>
@@ -200,16 +203,8 @@ input:focus,select:focus{border-color:var(--azul2);background:white}
     <button class="btn-sm" style="background:var(--azul2);color:white" onclick="copiar('res-gen')">Copiar resumen general</button>
   </div>
 
-  <div class="card" style="margin-bottom:4px">
-    <div class="card-title">Jornada activa</div>
-    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
-      <label style="font-size:13px;font-weight:600;color:var(--azul)">Fecha de jornada:</label>
-      <input type="date" id="jornada-fecha" style="font-size:15px;padding:8px 12px;border:1.5px solid var(--borde);border-radius:8px;background:var(--gris)"
-        onchange="cambiarJornada()">
-      <button onclick="cambiarJornada()" style="padding:8px 16px;background:var(--azul2);color:white;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer">Cargar jornada</button>
-    </div>
-    <div id="jornada-info" style="margin-top:8px;font-size:12px;color:var(--muted)">Cargando...</div>
-  </div>
+  <!-- jornada info hidden, handled by alertas system -->
+  <div id="jornada-info" style="display:none"></div>
   <div style="margin:4px 12px 0;padding:14px;background:var(--azul);border-radius:var(--radio);color:white">
     <div style="font-size:13px;opacity:.85;margin-bottom:8px">Cuando termines de asignar todos los camiones, finaliza para generar los números de asignación e imprimir las hojas de ruta.</div>
     <button onclick="finalizarAsignaciones()" style="width:100%;padding:13px;border:none;border-radius:10px;background:white;color:var(--azul);font-size:16px;font-weight:700;cursor:pointer">
@@ -265,51 +260,35 @@ async function escribirBin(d){
 /* ── JORNADA HELPERS ── */
 function hoy(){ const d=new Date(); const p=n=>String(n).padStart(2,'0'); return d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate()); }
 function fmtJornada(f){ if(!f)return'—'; const[y,m,d]=f.split('-'); const M=['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic']; return d+'/'+M[+m-1]+'/'+y; }
-function getJornada(bin, fecha){ return (bin.jornadas&&bin.jornadas[fecha])||{pedidos:{},asignaciones:{},cuadres:{}}; }
-function setJornada(bin, fecha, data){ if(!bin.jornadas) bin.jornadas={}; bin.jornadas[fecha]=data; }
-function listarJornadas(bin){
-  if(!bin.jornadas) return [];
-  return Object.keys(bin.jornadas).sort().reverse(); // newest first
-}
-function limpiarJornadasViejas(bin, keepDays=45){
+function getJornada(bin,fecha){ return (bin.jornadas&&bin.jornadas[fecha])||{pedidos:{},asignaciones:{},cuadres:{}}; }
+function setJornada(bin,fecha,data){ if(!bin.jornadas) bin.jornadas={}; bin.jornadas[fecha]=data; }
+function listarJornadas(bin){ if(!bin.jornadas) return []; return Object.keys(bin.jornadas).sort().reverse(); }
+function limpiarJornadasViejas(bin,keepDays=45){
   if(!bin.jornadas) return;
   const cutoff=new Date(); cutoff.setDate(cutoff.getDate()-keepDays);
   const cut=cutoff.toISOString().slice(0,10);
   Object.keys(bin.jornadas).forEach(f=>{ if(f<cut) delete bin.jornadas[f]; });
 }
 
-/* ── STATE ── */
-let subs={}, cams=[], asig={}, jornadaActiva=hoy();
-let binCache={};
+/* ════════════════════════════════════════════════
+   NEW MODEL:
+   - subs  = ALL pending pedidos across ALL jornadas (flat, keyed by jornada+sid)
+   - asig  = { key: { camionId, fechaEntrega } }  ← now includes delivery date
+   - binCache = full bin record
+════════════════════════════════════════════════ */
+let allSubs = {};   // { 'YYYY-MM-DD__sid': { ...submission, jornadaPedido } }
+let asig    = {};   // { 'YYYY-MM-DD__sid__pi': { camionId, fechaEntrega } }
+let cams    = [];
+let binCache= {};
+let modalContext = null;  // { globalKey, pi, sid, jornadaPedido }
 
 /* ── INIT ── */
 window.addEventListener('DOMContentLoaded',()=>{
   const h=new Date();
   const M=['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
   document.getElementById('top-sub').textContent='Villar · '+h.getDate()+'/'+M[h.getMonth()]+'/'+h.getFullYear();
-  // Set jornada date picker to today
-  const jf=document.getElementById('jornada-fecha');
-  if(jf) jf.value=hoy();
   cargarDatos();
 });
-
-/* ── JORNADA SELECTOR ── */
-function cambiarJornada(){
-  const jf=document.getElementById('jornada-fecha');
-  if(jf&&jf.value) jornadaActiva=jf.value;
-  cargarJornada();
-}
-
-function cargarJornada(){
-  const j=getJornada(binCache, jornadaActiva);
-  subs=j.pedidos||{};
-  asig=j.asignaciones||{};
-  const info=document.getElementById('jornada-info');
-  const nSubs=Object.keys(subs).length;
-  const nAsig=Object.keys(asig).length;
-  if(info) info.textContent=fmtJornada(jornadaActiva)+' · '+nSubs+' preventas · '+nAsig+' asignaciones';
-  renderPedidos(); actualizarStats();
-}
 
 /* ── CARGAR DATOS ── */
 async function cargarDatos(){
@@ -317,34 +296,157 @@ async function cargarDatos(){
   btn.textContent='⟳ ...';
   try{
     binCache=await leerBin();
-    // camiones at root level
     cams=(binCache.camiones&&binCache.camiones.length)?binCache.camiones:defaultCams();
-    // sync jornada-fecha picker
-    const jf=document.getElementById('jornada-fecha');
-    if(jf&&!jf.value) jf.value=jornadaActiva;
-    cargarJornada();
+    // Rebuild flat allSubs from ALL jornadas
+    allSubs={};
+    asig={};
+    if(binCache.jornadas){
+      Object.keys(binCache.jornadas).forEach(fecha=>{
+        const j=binCache.jornadas[fecha];
+        // Collect pedidos
+        if(j.pedidos){
+          Object.keys(j.pedidos).forEach(sid=>{
+            const gk=fecha+'__'+sid;
+            allSubs[gk]={...j.pedidos[sid], jornadaPedido:fecha};
+          });
+        }
+        // Collect asignaciones
+        if(j.asignaciones){
+          Object.keys(j.asignaciones).forEach(k=>{
+            // key format: sid__pi → expand to fecha__sid__pi
+            const gk=fecha+'__'+k;
+            asig[gk]=j.asignaciones[k];
+          });
+        }
+      });
+    }
   }catch(e){
     showToast('Error: '+e.message); console.error(e);
     if(!cams.length) cams=defaultCams();
-    renderPedidos(); actualizarStats();
   }
   btn.textContent='⟳ Actualizar';
+  renderAlertas();
+  renderPedidos();
+  actualizarStats();
 }
 
 /* ── GUARDAR ── */
 async function guardar(){
   try{
     limpiarJornadasViejas(binCache);
-    const j=getJornada(binCache, jornadaActiva);
-    j.pedidos=subs; j.asignaciones=asig;
-    setJornada(binCache, jornadaActiva, j);
+    // Write asignaciones back grouped by jornadaPedido
+    // First clear all asignaciones in all jornadas
+    if(binCache.jornadas){
+      Object.keys(binCache.jornadas).forEach(f=>{
+        if(binCache.jornadas[f]) binCache.jornadas[f].asignaciones={};
+      });
+    }
+    // Write each asig entry to its jornada
+    Object.keys(asig).forEach(gk=>{
+      // gk = fecha__sid__pi
+      const parts=gk.split('__');
+      const fecha=parts[0];
+      const localKey=parts.slice(1).join('__'); // sid__pi
+      if(!binCache.jornadas) binCache.jornadas={};
+      if(!binCache.jornadas[fecha]) binCache.jornadas[fecha]={pedidos:{},asignaciones:{},cuadres:{}};
+      binCache.jornadas[fecha].asignaciones[localKey]=asig[gk];
+    });
     binCache.camiones=cams;
     await escribirBin(binCache);
   }catch(e){showToast('Error al guardar: '+e.message);console.error(e);}
 }
-
 async function guardarCamiones(){ await guardar(); }
 async function guardarAsignaciones(){ await guardar(); }
+
+/* ── ALERTAS DE JORNADAS ANTERIORES ── */
+function renderAlertas(){
+  const cont=document.getElementById('alertas-anteriores');
+  if(!cont) return;
+  const todayStr=hoy();
+  // Find jornadas before today with unassigned clients
+  const alertas=[];
+  if(binCache.jornadas){
+    Object.keys(binCache.jornadas).sort().forEach(fecha=>{
+      if(fecha>=todayStr) return; // only past days
+      const j=binCache.jornadas[fecha];
+      if(!j.pedidos) return;
+      let sinAsignar=0;
+      Object.keys(j.pedidos).forEach(sid=>{
+        const s=j.pedidos[sid];
+        s.pedidos.forEach((_,pi)=>{
+          const gk=fecha+'__'+sid+'__'+pi;
+          if(!asig[gk]) sinAsignar++;
+        });
+      });
+      if(sinAsignar>0) alertas.push({fecha, sinAsignar});
+    });
+  }
+  if(!alertas.length){ cont.innerHTML=''; return; }
+  cont.innerHTML=alertas.map(a=>`
+    <div style="margin:6px 12px;padding:10px 14px;border-radius:10px;background:#fef3c7;border-left:4px solid #f59e0b;display:flex;align-items:center;justify-content:space-between;gap:10px">
+      <div>
+        <div style="font-size:13px;font-weight:700;color:#92400e">⚠ ${fmtJornada(a.fecha)} — ${a.sinAsignar} cliente${a.sinAsignar>1?'s':''} sin asignar</div>
+        <div style="font-size:11px;color:#92400e;margin-top:2px">Pedidos de días anteriores pendientes de asignación</div>
+      </div>
+      <button onclick="filtrarJornada('${a.fecha}')"
+        style="flex-shrink:0;padding:7px 12px;background:#92400e;color:white;border:none;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer">
+        Ver pedidos
+      </button>
+    </div>`).join('');
+}
+
+/* ── FILTER BY JORNADA (from alert button) ── */
+let filtroJornada=null; // null = show all pending
+function filtrarJornada(fecha){
+  filtroJornada=fecha;
+  renderPedidos();
+  // Scroll to prev-list
+  document.getElementById('prev-list')?.scrollIntoView({behavior:'smooth'});
+}
+function verTodos(){
+  filtroJornada=null;
+  renderPedidos();
+}
+
+/* ── STATS ── */
+function actualizarStats(){
+  let totCli=0, totCaj=0, sinAsig=0;
+  Object.keys(allSubs).forEach(gk=>{
+    const s=allSubs[gk];
+    totCaj+=s.totalCajas+s.totalPromo;
+    s.pedidos.forEach((_,pi)=>{
+      totCli++;
+      if(!asig[gk.replace(/^([^_]+__[^_]+)$/,'$1')+'__'+pi] && !asig[gk+'__'+pi]) sinAsig++;
+    });
+  });
+  // Recount properly
+  sinAsig=0; totCli=0;
+  Object.keys(allSubs).forEach(gk=>{
+    allSubs[gk].pedidos.forEach((_,pi)=>{
+      totCli++;
+      if(!asig[gk+'__'+pi]) sinAsig++;
+    });
+  });
+  document.getElementById('st-prev').textContent=Object.keys(allSubs).length;
+  document.getElementById('st-cli').textContent=totCli;
+  document.getElementById('st-caj').textContent=totCaj;
+  document.getElementById('st-sin').textContent=sinAsig;
+  const al=document.getElementById('alerta');
+  if(!totCli){al.style.display='none';}
+  else if(sinAsig){al.className='alert warn';al.style.display='block';al.textContent='⚠ '+sinAsig+' cliente'+(sinAsig>1?'s':'')+' sin camión asignado';}
+  else{al.className='alert ok';al.style.display='block';al.textContent='✓ Todos los clientes están asignados';}
+}
+
+function cargaCam(camId){
+  let t=0;
+  Object.keys(allSubs).forEach(gk=>{
+    allSubs[gk].pedidos.forEach((_,pi)=>{
+      const a=asig[gk+'__'+pi];
+      if(a&&a.camionId===camId) t+=_.cajas+_.promo;
+    });
+  });
+  return t;
+}
 
 function defaultCams(){
   return[1,2,3,4,5,6].map(n=>({id:'c'+n,nombre:'Camión '+n,chofer:'Chofer '+n,capacidad:0}));
@@ -359,66 +461,105 @@ function cargaCam(cid){
 /* ── RENDER PEDIDOS ── */
 function renderPedidos(){
   const cont=document.getElementById('prev-list');
-  const ids=Object.keys(subs);
+  // Determine which subs to show
+  let subsToShow={};
+  if(filtroJornada){
+    // Show only specific jornada
+    Object.keys(allSubs).forEach(gk=>{
+      if(gk.startsWith(filtroJornada+'__')) subsToShow[gk]=allSubs[gk];
+    });
+  } else {
+    // Show ALL unassigned + today's
+    const todayStr=hoy();
+    Object.keys(allSubs).forEach(gk=>{
+      const s=allSubs[gk];
+      // Include if from today OR has any unassigned client
+      const hasUnassigned=s.pedidos.some((_,pi)=>!asig[gk+'__'+pi]);
+      if(s.jornadaPedido===todayStr || hasUnassigned) subsToShow[gk]=s;
+    });
+  }
+
+  const ids=Object.keys(subsToShow);
+  let filterBanner='';
+  if(filtroJornada){
+    filterBanner=`<div style="margin:0 12px 6px;padding:8px 14px;background:var(--celeste);border-radius:10px;display:flex;align-items:center;justify-content:space-between">
+      <span style="font-size:13px;font-weight:700;color:var(--azul)">Filtrando: ${fmtJornada(filtroJornada)}</span>
+      <button onclick="verTodos()" style="padding:5px 12px;background:var(--azul);color:white;border:none;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer">Ver todos</button>
+    </div>`;
+  }
+
   if(!ids.length){
-    cont.innerHTML='<div style="text-align:center;padding:40px 20px;color:var(--muted);font-size:14px">No hay pedidos aún.<br><br>Los preventas deben presionar<br><strong>"Enviar pedido al encargado"</strong></div>';
+    cont.innerHTML=filterBanner+'<div style="text-align:center;padding:40px 20px;color:var(--muted);font-size:14px">No hay pedidos pendientes.<br><br>Los preventas deben presionar<br><strong>"Enviar pedido al encargado"</strong></div>';
     return;
   }
-  cont.innerHTML=ids.map(sid=>{
-    const s=subs[sid];
-    const asigC=s.pedidos.filter((_,i)=>asig[sid+'__'+i]).length;
-    const pct=s.pedidos.length?Math.round(asigC/s.pedidos.length*100):0;
-    const statusColor=pct===100?'var(--verde)':asigC?'var(--ambar)':'var(--rojo)';
-    const statusTxt=pct===100?'✓ Completo':asigC?`${asigC}/${s.pedidos.length}`:'Sin asignar';
 
-    // Truck buttons
-    const trucks=cams.map(cam=>{
-      const load=cargaCam(cam.id);
-      const cap=cam.capacidad||0;
-      const pctCap=cap?Math.min(Math.round(load/cap*100),100):null;
-      const bg=!cap?'var(--azul)':pctCap<80?'#166534':pctCap<100?'#78350f':'#7f1d1d';
-      return`<button class="truck-btn" style="background:${bg}" onclick="asignarTodos('${sid}','${cam.id}')">
-        <span class="ticon">🚛</span>
-        <span class="tname">${esc(cam.nombre)}</span>
-        ${cap?`<span class="tcap">${load}/${cap}cj</span>`:`<span class="tcap">${load}cj</span>`}
-      </button>`;
-    }).join('');
+  // Group by jornadaPedido for display
+  const byJornada={};
+  ids.forEach(gk=>{ const j=allSubs[gk].jornadaPedido; if(!byJornada[j]) byJornada[j]=[]; byJornada[j].push(gk); });
+  const jornadasOrdenadas=Object.keys(byJornada).sort().reverse();
 
-    // Client rows
-    const rows=s.pedidos.map((p,i)=>{
-      const cid=asig[sid+'__'+i];
-      const cam=cams.find(c=>c.id===cid);
-      return`<div class="cli-row${cam?' has-asig':''}" onclick="abrirModal('${sid}',${i})">
-        <div class="cli-check">${cam?'✓':''}</div>
-        <div class="cli-info">
-          <div class="cli-name">${esc(p.cliente)}</div>
-          <div class="cli-tags">
-            <span class="tag tag-v">V:${p.cajas}</span>
-            ${p.promo?`<span class="tag tag-p">P:${p.promo}</span>`:''}
-            ${p.credito?'<span class="tag tag-cred">Crédito</span>':''}
-            ${p.ncf?'<span class="tag tag-ncf">NCF</span>':''}
+  cont.innerHTML=filterBanner+jornadasOrdenadas.map(fecha=>{
+    const isHoy=fecha===hoy();
+    const jornadaHeader=`<div style="margin:8px 12px 4px;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:${isHoy?'var(--verde)':'var(--ambar)'};display:flex;align-items:center;gap:6px">
+      <span>${isHoy?'📅':'⏰'} Jornada ${fmtJornada(fecha)}${isHoy?' (hoy)':' (anterior)'}</span>
+    </div>`;
+    const blocks=byJornada[fecha].map(gk=>{
+      const s=subsToShow[gk];
+      const sid=gk.slice(fecha.length+2); // remove "fecha__" prefix
+      const asigCount=s.pedidos.filter((_,pi)=>asig[gk+'__'+pi]).length;
+      const pct=s.pedidos.length?Math.round(asigCount/s.pedidos.length*100):0;
+      const statusColor=pct===100?'var(--verde)':asigCount?'var(--ambar)':'var(--rojo)';
+      const statusTxt=pct===100?'✓ Completo':asigCount?`${asigCount}/${s.pedidos.length}`:'Sin asignar';
+      const trucks=cams.map(cam=>{
+        const load=cargaCam(cam.id);
+        const cap=cam.capacidad||0;
+        const pctCap=cap?Math.min(Math.round(load/cap*100),100):null;
+        const bg=!cap?'var(--azul)':pctCap<80?'#166534':pctCap<100?'#78350f':'#7f1d1d';
+        return`<button class="truck-btn" style="background:${bg}" onclick="asignarTodos('${gk}','${cam.id}')">
+          <span class="ticon">🚛</span>
+          <span class="tname">${esc(cam.nombre)}</span>
+          ${cap?`<span class="tcap">${load}/${cap}cj</span>`:`<span class="tcap">${load}cj</span>`}
+        </button>`;
+      }).join('');
+      const rows=s.pedidos.map((p,pi)=>{
+        const a=asig[gk+'__'+pi];
+        const cam=cams.find(cc=>cc.id===(a&&a.camionId));
+        const entFecha=a&&a.fechaEntrega?a.fechaEntrega:'';
+        return`<div class="cli-row${cam?' has-asig':''}" onclick="abrirModal('${gk}',${pi})">
+          <div class="cli-check">${cam?'✓':''}</div>
+          <div class="cli-info">
+            <div class="cli-name">${esc(p.cliente)}</div>
+            <div class="cli-tags">
+              <span class="tag tag-v">V:${p.cajas}</span>
+              ${p.promo?`<span class="tag tag-p">P:${p.promo}</span>`:''}
+              ${p.credito?'<span class="tag tag-cred">Crédito</span>':''}
+              ${p.ncf?'<span class="tag tag-ncf">NCF</span>':''}
+            </div>
           </div>
+          <div style="text-align:right;flex-shrink:0">
+            <span class="asig-lbl ${cam?'ok':'no'}">${cam?esc(cam.nombre):'Sin asignar'}</span>
+            ${entFecha?`<div style="font-size:10px;color:var(--muted);margin-top:2px">📅 ${fmtJornada(entFecha)}</div>`:''}
+          </div>
+        </div>`;
+      }).join('');
+      return`<div class="prev-block">
+        <div class="prev-head" onclick="togglePrev('pbody-${gk.replace(/\W/g,'_')}','pchev-${gk.replace(/\W/g,'_')}')">
+          <div class="prev-head-info">
+            <div class="prev-head-name">${esc(s.vendedor)} — ${esc(s.zona)}</div>
+            <div class="prev-head-meta">${s.pedidos.length} clientes · ${s.totalCajas}V+${s.totalPromo}P · $${fmt(s.totalDinero)}</div>
+          </div>
+          <span style="font-size:12px;font-weight:700;color:${statusColor};flex-shrink:0">${statusTxt}</span>
+          <span class="prev-chevron" id="pchev-${gk.replace(/\W/g,'_')}">›</span>
         </div>
-        <span class="asig-lbl ${cam?'ok':'no'}">${cam?esc(cam.nombre):'Sin asignar'}</span>
+        <div class="prev-body" id="pbody-${gk.replace(/\W/g,'_')}">
+          <div style="font-size:11px;color:var(--muted);padding:8px 0 2px;font-weight:600">Asignar toda la ruta a un camión:</div>
+          <div class="truck-bar">${trucks}</div>
+          <div style="font-size:11px;color:var(--muted);padding:4px 0;font-weight:600">O toca un cliente para asignar individualmente:</div>
+          ${rows}
+        </div>
       </div>`;
     }).join('');
-
-    return`<div class="prev-block">
-      <div class="prev-head" onclick="togglePrev('pbody-${sid}','pchev-${sid}')">
-        <div class="prev-head-info">
-          <div class="prev-head-name">${esc(s.vendedor)} — ${esc(s.zona)}</div>
-          <div class="prev-head-meta">${s.pedidos.length} clientes · ${s.totalCajas}V+${s.totalPromo}P · $${fmt(s.totalDinero)}</div>
-        </div>
-        <span style="font-size:12px;font-weight:700;color:${statusColor};flex-shrink:0">${statusTxt}</span>
-        <span class="prev-chevron" id="pchev-${sid}">›</span>
-      </div>
-      <div class="prev-body" id="pbody-${sid}">
-        <div style="font-size:11px;color:var(--muted);padding:8px 0 2px;font-weight:600">Asignar toda la ruta a un camión:</div>
-        <div class="truck-bar">${trucks}</div>
-        <div style="font-size:11px;color:var(--muted);padding:4px 0 4px;font-weight:600">O toca un cliente para asignar individualmente:</div>
-        ${rows}
-      </div>
-    </div>`;
+    return jornadaHeader+blocks;
   }).join('');
 }
 
@@ -445,21 +586,32 @@ function actualizarStats(){
 }
 
 /* ── ASIGNAR TODOS (truck btn) ── */
-async function asignarTodos(sid,camId){
-  subs[sid].pedidos.forEach((_,i)=>{asig[sid+'__'+i]=camId;});
+async function asignarTodos(gk,camId){
+  // Ask for delivery date
+  const fechaEntrega=prompt('Fecha de entrega para esta ruta (YYYY-MM-DD):',hoy());
+  if(!fechaEntrega) return;
+  allSubs[gk].pedidos.forEach((_,pi)=>{ asig[gk+'__'+pi]={camionId:camId,fechaEntrega}; });
   await guardar();
-  renderPedidos();actualizarStats();
-  showToast(`${subs[sid].pedidos.length} clientes → ${cams.find(c=>c.id===camId)?.nombre} ✓`);
+  renderAlertas(); renderPedidos(); actualizarStats();
+  showToast(`${allSubs[gk].pedidos.length} clientes → ${cams.find(c=>c.id===camId)?.nombre} · ${fmtJornada(fechaEntrega)} ✓`);
 }
 
 /* ── MODAL CLIENTE ── */
-function abrirModal(sid,pi){
-  mSid=sid;mPi=pi;
-  const p=subs[sid].pedidos[pi];
+function abrirModal(gk,pi){
+  modalContext={gk,pi};
+  const s=allSubs[gk];
+  const p=s.pedidos[pi];
+  const existing=asig[gk+'__'+pi]||{};
   document.getElementById('modal-title').textContent=esc(p.cliente);
-  document.getElementById('modal-sub').textContent=`${p.cajas} cajas${p.promo?'+'+p.promo+' prom':''} · $${fmt(p.total)}`;
-  const actual=asig[sid+'__'+pi]||'';
+  document.getElementById('modal-sub').textContent=`${p.cajas} cajas${p.promo?'+'+p.promo+' prom':''} · $${fmt(p.total)} · Pedido: ${fmtJornada(s.jornadaPedido)}`;
+  const actual=existing.camionId||'';
+  const entFecha=existing.fechaEntrega||hoy();
   document.getElementById('modal-body').innerHTML=
+    `<div style="margin-bottom:10px;padding:8px 12px;background:var(--celeste);border-radius:8px">
+      <label style="font-size:12px;font-weight:700;color:var(--azul);display:block;margin-bottom:4px">📅 Fecha de entrega</label>
+      <input type="date" id="modal-fecha-entrega" value="${entFecha}"
+        style="font-size:15px;padding:7px 12px;border:1.5px solid var(--borde);border-radius:8px;width:100%">
+    </div>`+
     `<div class="mcam-btn${actual===''?' sel':''}" onclick="asignarCliente('')">
       <span class="mcam-icon" style="font-size:20px">✕</span>
       <div class="mcam-info"><div class="mcam-name" style="color:var(--rojo)">Quitar asignación</div></div>
@@ -482,10 +634,19 @@ function abrirModal(sid,pi){
 }
 
 async function asignarCliente(camId){
-  const key=mSid+'__'+mPi;
-  if(camId)asig[key]=camId;else delete asig[key];
-  await guardar();cerrarModal();
-  renderPedidos();actualizarStats();
+  if(!modalContext) return;
+  const {gk,pi}=modalContext;
+  const key=gk+'__'+pi;
+  if(camId){
+    const fechaEl=document.getElementById('modal-fecha-entrega');
+    const fechaEntrega=fechaEl?fechaEl.value:hoy();
+    asig[key]={camionId:camId,fechaEntrega};
+  } else {
+    delete asig[key];
+  }
+  await guardar();
+  cerrarModal();
+  renderAlertas(); renderPedidos(); actualizarStats();
   showToast(camId?'Asignado ✓':'Quitado de camión');
 }
 
@@ -565,19 +726,34 @@ async function elimCam(i){
 function renderCamDetalle(){
   document.getElementById('cam-detalle').innerHTML=cams.map(cam=>{
     const items=[];
-    Object.keys(subs).forEach(sid=>{subs[sid].pedidos.forEach((p,i)=>{if(asig[sid+'__'+i]===cam.id)items.push({sid,i,p,zona:subs[sid].zona});});});
+    Object.keys(allSubs).forEach(gk=>{
+      allSubs[gk].pedidos.forEach((p,i)=>{
+        const a=asig[gk+'__'+i];
+        if(a&&a.camionId===cam.id){
+          items.push({gk,i,p,zona:allSubs[gk].zona,
+            jornadaPedido:allSubs[gk].jornadaPedido,
+            fechaEntrega:a.fechaEntrega});
+        }
+      });
+    });
     const totC=items.reduce((a,x)=>a+x.p.cajas,0);
     const totP=items.reduce((a,x)=>a+x.p.promo,0);
     const totD=items.reduce((a,x)=>a+x.p.total,0);
     const zonas=[...new Set(items.map(x=>x.zona))].join(', ');
+    // Group by fechaEntrega
+    const byFecha={};
+    items.forEach(x=>{ const f=x.fechaEntrega||'Sin fecha'; if(!byFecha[f]) byFecha[f]=[]; byFecha[f].push(x); });
     const rows=items.length
-      ?items.map(({sid,i,p,zona})=>`<div class="cam-cli">
+      ?Object.keys(byFecha).sort().map(f=>`
+        <div style="font-size:10px;font-weight:700;color:var(--azul);padding:4px 0 2px;text-transform:uppercase;letter-spacing:.5px">📅 Entrega ${fmtJornada(f)}</div>`+
+        byFecha[f].map(({gk,i,p,zona})=>`<div class="cam-cli">
           <div class="cam-cli-info">
             <div class="cam-cli-name">${esc(p.cliente)}</div>
             <div class="cam-cli-det">${esc(zona)} · V:${p.cajas}${p.promo?'+P'+p.promo:''} · $${fmt(p.total)}</div>
           </div>
-          <button class="btn-x" onclick="quitarCli('${sid}',${i})">×</button>
+          <button class="btn-x" onclick="quitarCli('${gk}',${i})">×</button>
         </div>`).join('')
+      ).join('')
       :'<div class="cam-empty">Sin clientes asignados</div>';
     return`<div class="camion-card">
       <div class="cam-head" onclick="toggleCam('det-${cam.id}')">
@@ -598,8 +774,8 @@ function renderCamDetalle(){
   }).join('');
 }
 
-async function quitarCli(sid,i){
-  delete asig[sid+'__'+i];await guardar();
+async function quitarCli(gk,i){
+  delete asig[gk+'__'+i];await guardar();
   renderCamDetalle();renderCamConfig();renderPedidos();actualizarStats();
   showToast('Cliente quitado del camión');
 }
@@ -632,7 +808,7 @@ function genResumenGen(){
   let txt='';let sin=0;
   cams.forEach(cam=>{
     const items=[];
-    Object.keys(subs).forEach(sid=>{subs[sid].pedidos.forEach((p,i)=>{if(asig[sid+'__'+i]===cam.id)items.push({p,zona:subs[sid].zona});});});
+    Object.keys(allSubs).forEach(gk=>{allSubs[gk].pedidos.forEach((p,i)=>{const a=asig[gk+'__'+i];if(a&&a.camionId===cam.id)items.push({p,zona:allSubs[gk].zona});});});
     if(!items.length)return;
     const tot=items.reduce((a,x)=>a+x.p.cajas+x.p.promo,0);
     const cap=cam.capacidad||0;
@@ -640,7 +816,7 @@ function genResumenGen(){
     const capS=cap?` · ${tot}/${cap}cj${tot>cap?' ⚠ '+Math.ceil(tot/cap)+' viajes':''}`:` · ${tot}cj`;
     txt+=`${cam.nombre} (${cam.chofer})${capS} · ${zonas}\n`;
   });
-  Object.keys(subs).forEach(sid=>{subs[sid].pedidos.forEach((_,i)=>{if(!asig[sid+'__'+i])sin++;});});
+  Object.keys(allSubs).forEach(gk=>{allSubs[gk].pedidos.forEach((_,i)=>{if(!asig[gk+'__'+i])sin++;});});
   if(sin)txt+=`\n⚠ SIN ASIGNAR: ${sin} cliente${sin>1?'s':''}`;
   document.getElementById('res-gen').textContent=txt||'—';
 }
@@ -681,6 +857,7 @@ async function finalizarAsignaciones(){
     });
     if(items.length){
       cam.asignacionId = generarNumAsig(cam.nombre, fecha);
+      cam.fechaAsignacion = fecha;
       cam.fechaAsignacion = fecha;
       alguno = true;
     }
@@ -724,9 +901,9 @@ function imprimirCamion(camId){
   const cam=cams.find(c=>c.id===camId);
   if(!cam){showToast('Camión no encontrado');return;}
   const items=[];
-  Object.keys(subs).forEach(sid=>{
-    subs[sid].pedidos.forEach((p,i)=>{
-      if(asig[sid+'__'+i]===camId) items.push({p,zona:subs[sid].zona});
+  Object.keys(allSubs).forEach(gk=>{
+    allSubs[gk].pedidos.forEach((p,i)=>{
+      const a=asig[gk+'__'+i]; if(a&&a.camionId===camId) items.push({p,zona:allSubs[gk].zona});
     });
   });
   if(!items.length){showToast('Sin clientes asignados');return;}
@@ -859,6 +1036,7 @@ function imprimirCamion(camId){
   w.document.write(html);
   w.document.close();
 }
+
 
 </script>
 </body>

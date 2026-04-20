@@ -369,6 +369,22 @@ input:focus,select:focus{border-color:var(--azul2);background:white}
         <div id="zona-resumen"><div style="font-size:12px;color:var(--muted);text-align:center;padding:6px">Llena el cuadre...</div></div>
       </div>
 
+      <!-- Extra clients panel -->
+      <div style="margin-top:10px;background:var(--celeste);border-radius:8px;padding:10px 12px">
+        <div style="font-size:12px;font-weight:700;color:var(--azul);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">
+          ➕ Clientes extra / emergencia
+        </div>
+        <div id="extras-list"></div>
+        <div style="display:grid;grid-template-columns:2fr 1fr 1fr 1fr 1fr auto;gap:6px;margin-top:6px;align-items:end">
+          <input type="text" id="ex-cliente" placeholder="Nombre del cliente" style="font-size:13px;padding:5px 8px">
+          <input type="number" id="ex-cajas" placeholder="Cajas" min="0" inputmode="numeric" style="font-size:13px;padding:5px 8px">
+          <input type="number" id="ex-promo" placeholder="Promo" min="0" inputmode="numeric" style="font-size:13px;padding:5px 8px">
+          <input type="number" id="ex-precio" placeholder="$/cj" min="0" inputmode="numeric" style="font-size:13px;padding:5px 8px">
+          <input type="text" id="ex-zona" placeholder="Zona" style="font-size:13px;padding:5px 8px">
+          <button onclick="agregarExtra()" style="padding:6px 12px;background:var(--azul2);color:white;border:none;border-radius:6px;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap">+ Agregar</button>
+        </div>
+      </div>
+
       <!-- Sticky action buttons -->
       <div class="sidebar-actions">
         <button class="btn-action btn-save" onclick="guardarCuadre()">💾 Guardar cuadre</button>
@@ -524,7 +540,7 @@ function renderDashboard(){
   const cont=document.getElementById('dashboard-list');
   // Find cams that have assigned clients
   const activeCams = cams.filter(cam=>{
-    return Object.keys(asig).some(k=>asig[k]===cam.id);
+    return Object.keys(asig).some(k=>(asig[k]&&asig[k].camionId===cam.id)||asig[k]===cam.id);
   });
 
   if(!activeCams.length){
@@ -577,11 +593,16 @@ function getItemsCam(camId){
   const items=[];
   Object.keys(subs).forEach(sid=>{
     subs[sid].pedidos.forEach((p,i)=>{
-      if(asig[sid+'__'+i]===camId) items.push({p,zona:subs[sid].zona,sid,pi:i});
+      if((asig[sid+'__'+i]&&(asig[sid+'__'+i].camionId===camId||asig[sid+'__'+i]===camId))) items.push({p,zona:subs[sid].zona,sid,pi:i});
     });
   });
   return items;
 }
+function getExtrasCam(camId){
+  const cq=cuadres[camId]||{};
+  return cq.extras||[];
+}
+
 
 function calcDifEf(camId, cq){
   const items=getItemsCam(camId);
@@ -633,6 +654,7 @@ function abrirCuadre(camId){
   document.getElementById('g-creditos').value   = g.creditos   ||'';
 
   renderClientesCuadre(camId);
+  renderExtras();
   recalcResumen();
   renderZonaResumen();
   renderPagoSummary();
@@ -698,6 +720,7 @@ function renderClientesCuadre(camId){
     </tr>`;
   }).join('');
   recalcTotales(items);
+  renderExtras();
 }
 
 function updateCliente(i, field, val){
@@ -733,6 +756,12 @@ function recalcTotales(items){
     const rP=ci.realProm!==undefined?ci.realProm:x.p.promo;
     realV+=rV; realP+=rP; realD+=rV*x.p.precio;
     cobrado+=+(ci.cobrado||0);
+  });
+  // Add extras to totals
+  const extras=cuadreLocal.extras||[];
+  extras.forEach(ex=>{
+    realV+=ex.cajas; realP+=ex.promo; realD+=ex.cajas*ex.precio;
+    cobrado+=+(ex.cobrado||0);
   });
   const s=(id,v)=>{const e=document.getElementById(id);if(e)e.textContent=v;};
   s('tot-prev-v',prevV); s('tot-prev-p',prevP);
@@ -772,6 +801,14 @@ function recalcResumen(){
   // Pago breakdown
   const items2=getItemsCam(activeCamId);
   let sumEf=0, sumTr=0, sumCr=0;
+  // Include extras in pago breakdown
+  (cuadreLocal.extras||[]).forEach(ex=>{
+    const rD2=ex.cajas*ex.precio;
+    const tipo=ex.tipoPago||'efectivo';
+    if(tipo==='transferencia') sumTr+=rD2;
+    else if(tipo==='credito')  sumCr+=rD2;
+    else                       sumEf+=rD2;
+  });
   items2.forEach((x,i2)=>{
     const ci2=cuadreLocal['c'+i2]||{};
     const rV2=ci2.realCajas!==undefined?ci2.realCajas:x.p.cajas;
@@ -939,8 +976,14 @@ function renderPagoSummary(){
 /* ── RESUMEN POR ZONA ── */
 function renderZonaResumen(){
   const items=getItemsCam(activeCamId);
-  if(!items.length){document.getElementById('zona-resumen').textContent='—';return;}
+  if(!items.length&&!(cuadreLocal.extras||[]).length){document.getElementById('zona-resumen').textContent='—';return;}
 
+  // Add extras to zona grouping
+  (cuadreLocal.extras||[]).forEach((ex,i)=>{
+    const z=ex.zona||'Extra';
+    if(!zonas[z]) zonas[z]={prevV:0,prevP:0,prevD:0,realV:0,realP:0,realD:0};
+    zonas[z].realV+=ex.cajas; zonas[z].realP+=ex.promo; zonas[z].realD+=ex.cajas*ex.precio;
+  });
   // Group by zona
   const zonas={};
   items.forEach((x,i)=>{
@@ -1217,6 +1260,107 @@ function copiarResumenExport(){
   const txt=document.getElementById('export-resumen')?.textContent||'';
   if(navigator.clipboard) navigator.clipboard.writeText(txt).then(()=>showToast('Resumen copiado ✓'));
   else{const t=document.createElement('textarea');t.value=txt;t.style.position='fixed';t.style.opacity='0';document.body.appendChild(t);t.select();document.execCommand('copy');document.body.removeChild(t);showToast('Resumen copiado ✓');}
+}
+
+/* ── EXTRAS ── */
+function renderExtras(){
+  const cont=document.getElementById('extras-list');
+  if(!cont) return;
+  const extras=cuadreLocal.extras||[];
+  if(!extras.length){ cont.innerHTML=''; return; }
+  
+  cont.innerHTML=extras.map((ex,i)=>`
+    <tr class="ok-row" id="ex-${i}">
+      <td style="text-align:center;font-size:11px;color:var(--azul2)">E${i+1}</td>
+      <td><strong>${esc(ex.cliente)}</strong><span class="tag-sm tag-ncf" style="margin-left:4px">EXTRA</span>
+        <div style="font-size:10px;color:var(--muted)">$${ex.precio}/cj · $${fmt(ex.cajas*ex.precio)}</div></td>
+      <td style="text-align:center">—</td>
+      <td><input class="tbl-input" type="number" min="0" value="${ex.cajas}" style="width:50px"
+        oninput="updateExtra(${i},'cajas',+this.value)"></td>
+      <td style="text-align:center">—</td>
+      <td><input class="tbl-input" type="number" min="0" value="${ex.promo}" style="width:42px"
+        oninput="updateExtra(${i},'promo',+this.value)"></td>
+      <td><input class="tbl-input" type="number" min="0" value="${ex.cobrado||''}" style="width:70px"
+        placeholder="${ex.cajas*ex.precio}"
+        oninput="updateExtra(${i},'cobrado',+this.value)"></td>
+      <td><div class="pago-mini">
+        <div class="pago-mini-btn${(ex.tipoPago||'efectivo')==='efectivo'?' sel-ef':''}" onclick="updateExtra(${i},'tipoPago','efectivo')">💵</div>
+        <div class="pago-mini-btn${ex.tipoPago==='transferencia'?' sel-tr':''}" onclick="updateExtra(${i},'tipoPago','transferencia')">🏦</div>
+        <div class="pago-mini-btn${ex.tipoPago==='credito'?' sel-cr':''}" onclick="updateExtra(${i},'tipoPago','credito')">📋</div>
+      </div></td>
+      <td><select class="tbl-select" onchange="updateExtra(${i},'estado',this.value)">
+        <option value="entregado" ${(ex.estado||'entregado')==='entregado'?'selected':''}>✓ OK</option>
+        <option value="parcial" ${ex.estado==='parcial'?'selected':''}>⚠ Parcial</option>
+        <option value="devuelto" ${ex.estado==='devuelto'?'selected':''}>↩ No</option>
+      </select></td>
+      <td><input type="text" class="tbl-obs" placeholder="Nota..." value="${esc(ex.obs||'')}"
+        oninput="updateExtra(${i},'obs',this.value)">
+        <button onclick="quitarExtra(${i})" style="margin-top:2px;font-size:10px;padding:1px 6px;background:var(--rojo-bg);color:var(--rojo);border:none;border-radius:4px;cursor:pointer">× quitar</button>
+      </td>
+    </tr>`).join('');
+  // Insert into tbody after existing rows
+  const tbody=document.getElementById('clientes-cuadre');
+  if(tbody){
+    // Remove old extra rows first
+    tbody.querySelectorAll('[id^="ex-"]').forEach(r=>r.remove());
+    // Add separator + new extras
+    if(extras.length){
+      const sep=document.createElement('tr');
+      sep.id='ex-sep';
+      sep.innerHTML='<td colspan="11" style="background:var(--celeste);font-size:10px;font-weight:700;color:var(--azul);text-transform:uppercase;letter-spacing:.5px;padding:4px 8px">Clientes extra / emergencia</td>';
+      tbody.querySelector('[id^="ex-sep"]')?.remove();
+      tbody.appendChild(sep);
+      extras.forEach((ex,i)=>{
+        const existing=tbody.querySelector('#ex-'+i);
+        if(existing) existing.remove();
+        const tmp=document.createElement('tbody');
+        tmp.innerHTML=cont.innerHTML.split('</tr>')[i]+'</tr>';
+        const tr=tmp.querySelector('tr');
+        if(tr) tbody.appendChild(tr);
+      });
+      cont.innerHTML='';
+    }
+  }
+
+}
+
+function agregarExtra(){
+  const cliente=document.getElementById('ex-cliente')?.value.trim();
+  const cajas=+(document.getElementById('ex-cajas')?.value)||0;
+  const promo=+(document.getElementById('ex-promo')?.value)||0;
+  const precio=+(document.getElementById('ex-precio')?.value)||0;
+  const zona=document.getElementById('ex-zona')?.value.trim()||'Extra';
+  if(!cliente){ showToast('Escribe el nombre del cliente'); return; }
+  if(!cajas&&!promo){ showToast('Ingresa al menos una caja'); return; }
+  if(!cuadreLocal.extras) cuadreLocal.extras=[];
+  cuadreLocal.extras.push({
+    cliente, cajas, promo, precio, zona,
+    cobrado:'', tipoPago:'efectivo', estado:'entregado', obs:''
+  });
+  // Clear inputs
+  ['ex-cliente','ex-cajas','ex-promo','ex-precio','ex-zona'].forEach(id=>{
+    const el=document.getElementById(id); if(el) el.value='';
+  });
+  renderExtras();
+  recalcTotales(getItemsCam(activeCamId));
+  recalcResumen();
+  showToast('Cliente extra agregado ✓');
+}
+
+function updateExtra(i, field, val){
+  if(!cuadreLocal.extras||!cuadreLocal.extras[i]) return;
+  cuadreLocal.extras[i][field]=val;
+  if(field==='tipoPago') renderExtras();
+  recalcTotales(getItemsCam(activeCamId));
+  recalcResumen();
+}
+
+function quitarExtra(i){
+  if(!cuadreLocal.extras) return;
+  cuadreLocal.extras.splice(i,1);
+  renderExtras();
+  recalcTotales(getItemsCam(activeCamId));
+  recalcResumen();
 }
 
 function showToast(m){const t=document.getElementById('toast');t.textContent=m;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2500);}

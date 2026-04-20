@@ -120,6 +120,12 @@ html,body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-se
 .pago-box-cr .pago-box-lab{color:var(--ambar)}
 .pago-box-sub{font-size:11px;margin-top:2px;opacity:.8}
 
+/* ── EXTRAS ── */
+.extra-form{background:var(--celeste);border-radius:10px;padding:12px;margin-top:10px}
+.extra-form-title{font-size:12px;font-weight:700;color:var(--azul);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px}
+.extra-row{background:var(--blanco);border-radius:8px;padding:10px 12px;margin-bottom:6px;border-left:3px solid var(--azul2)}
+.extra-row:last-child{margin-bottom:0}
+
 /* ── RESUMEN POR ZONA ── *//* ── RESUMEN POR ZONA ── */
 .zona-table{width:100%;border-collapse:collapse;font-size:13px;margin-top:4px}
 .zona-table thead tr{background:var(--azul);color:white}
@@ -233,6 +239,27 @@ html,body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-se
   <div class="card" style="padding:10px">
     <div id="zona-resumen">—</div>
   </div>
+  <!-- Extra clients -->
+  <div class="sec-label">Clientes extra / emergencia</div>
+  <div style="margin:0 12px">
+    <div id="extras-list"></div>
+    <div class="card" style="padding:12px;background:var(--celeste)">
+      <div class="card-title" style="color:var(--azul)">➕ Agregar cliente extra</div>
+      <div style="display:grid;gap:8px">
+        <input type="text" id="ex-cliente" placeholder="Nombre del cliente">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+          <input type="number" id="ex-cajas" placeholder="Cajas" min="0" inputmode="numeric">
+          <input type="number" id="ex-promo" placeholder="Promo" min="0" inputmode="numeric">
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+          <input type="number" id="ex-precio" placeholder="$/caja" min="0" inputmode="numeric">
+          <input type="text" id="ex-zona" placeholder="Zona (opcional)">
+        </div>
+        <button onclick="agregarExtra()" style="padding:12px;background:var(--azul2);color:white;border:none;border-radius:10px;font-size:15px;font-weight:700;cursor:pointer">+ Agregar cliente extra</button>
+      </div>
+    </div>
+  </div>
+
   <button class="btn btn-blue" onclick="guardarCuadre()">💾 Guardar cuadre</button>
   <button class="btn" style="background:#166534;color:white" onclick="exportarExcel()">📊 Exportar fila para Excel</button>
   <button class="btn" style="background:var(--gris2);color:var(--texto);font-size:14px" onclick="volverDashboard()">‹ Volver al listado</button>
@@ -385,7 +412,7 @@ function renderDashboard(){
   const cont=document.getElementById('dashboard-list');
   // Find cams that have assigned clients
   const activeCams = cams.filter(cam=>{
-    return Object.keys(asig).some(k=>asig[k]===cam.id);
+    return Object.keys(asig).some(k=>(asig[k]&&asig[k].camionId===cam.id)||asig[k]===cam.id);
   });
 
   if(!activeCams.length){
@@ -438,11 +465,16 @@ function getItemsCam(camId){
   const items=[];
   Object.keys(subs).forEach(sid=>{
     subs[sid].pedidos.forEach((p,i)=>{
-      if(asig[sid+'__'+i]===camId) items.push({p,zona:subs[sid].zona,sid,pi:i});
+      if((asig[sid+'__'+i]&&(asig[sid+'__'+i].camionId===camId||asig[sid+'__'+i]===camId))) items.push({p,zona:subs[sid].zona,sid,pi:i});
     });
   });
   return items;
 }
+function getExtrasCam(camId){
+  const cq=cuadres[camId]||{};
+  return cq.extras||[];
+}
+
 
 function calcDifEf(camId, cq){
   const items=getItemsCam(camId);
@@ -494,6 +526,7 @@ function abrirCuadre(camId){
   document.getElementById('g-creditos').value   = g.creditos   ||'';
 
   renderClientesCuadre(camId);
+  renderExtras();
   recalcResumen();
   renderZonaResumen();
   renderPagoSummary();
@@ -584,6 +617,7 @@ function renderClientesCuadre(camId){
   }).join('');
 
   recalcTotales(items);
+  renderExtras();
 }
 
 function updateCliente(i, field, val){
@@ -651,6 +685,14 @@ function recalcResumen(){
   // Compute pago breakdown from client data
   const items2=getItemsCam(activeCamId);
   let sumEf=0,sumTr=0,sumCr=0;
+  // Include extras in pago breakdown
+  (cuadreLocal.extras||[]).forEach(ex=>{
+    const rD2=ex.cajas*ex.precio;
+    const tipo=ex.tipoPago||'efectivo';
+    if(tipo==='transferencia') sumTr+=rD2;
+    else if(tipo==='credito')  sumCr+=rD2;
+    else                       sumEf+=rD2;
+  });
   items2.forEach((x,i2)=>{
     const ci2=cuadreLocal['c'+i2]||{};
     const rV2=ci2.realCajas!==undefined?ci2.realCajas:x.p.cajas;
@@ -771,8 +813,14 @@ function renderPagoSummary(){
 /* ── RESUMEN POR ZONA ── */
 function renderZonaResumen(){
   const items=getItemsCam(activeCamId);
-  if(!items.length){document.getElementById('zona-resumen').textContent='—';return;}
+  if(!items.length&&!(cuadreLocal.extras||[]).length){document.getElementById('zona-resumen').textContent='—';return;}
 
+  // Add extras to zona grouping
+  (cuadreLocal.extras||[]).forEach((ex,i)=>{
+    const z=ex.zona||'Extra';
+    if(!zonas[z]) zonas[z]={prevV:0,prevP:0,prevD:0,realV:0,realP:0,realD:0};
+    zonas[z].realV+=ex.cajas; zonas[z].realP+=ex.promo; zonas[z].realD+=ex.cajas*ex.precio;
+  });
   // Group by zona
   const zonas={};
   items.forEach((x,i)=>{
@@ -1048,6 +1096,90 @@ function copiarResumenExport(){
   const txt=document.getElementById('export-resumen')?.textContent||'';
   if(navigator.clipboard) navigator.clipboard.writeText(txt).then(()=>showToast('Resumen copiado ✓'));
   else{const t=document.createElement('textarea');t.value=txt;t.style.position='fixed';t.style.opacity='0';document.body.appendChild(t);t.select();document.execCommand('copy');document.body.removeChild(t);showToast('Resumen copiado ✓');}
+}
+
+/* ── EXTRAS ── */
+function renderExtras(){
+  const cont=document.getElementById('extras-list');
+  if(!cont) return;
+  const extras=cuadreLocal.extras||[];
+  if(!extras.length){ cont.innerHTML=''; return; }
+  
+  cont.innerHTML=extras.map((ex,i)=>`
+    <div class="extra-row" id="ex-${i}">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px">
+        <div>
+          <strong style="font-size:14px">${esc(ex.cliente)}</strong>
+          <span style="background:#ede9fe;color:#4c1d95;font-size:10px;font-weight:700;padding:2px 6px;border-radius:10px;margin-left:4px">EXTRA</span>
+          <div style="font-size:11px;color:var(--muted);margin-top:2px">${esc(ex.zona||'')} · $${ex.precio}/cj</div>
+        </div>
+        <button onclick="quitarExtra(${i})" style="background:var(--rojo-bg);color:var(--rojo);border:none;border-radius:6px;padding:4px 10px;font-size:12px;font-weight:600;cursor:pointer">× Quitar</button>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-bottom:6px">
+        <div>
+          <div style="font-size:10px;font-weight:700;color:var(--azul);text-transform:uppercase;margin-bottom:2px">Cajas</div>
+          <input class="campo-input" type="number" min="0" value="${ex.cajas}" style="text-align:center"
+            oninput="updateExtra(${i},'cajas',+this.value)">
+        </div>
+        <div>
+          <div style="font-size:10px;font-weight:700;color:var(--azul);text-transform:uppercase;margin-bottom:2px">Promo</div>
+          <input class="campo-input" type="number" min="0" value="${ex.promo}" style="text-align:center"
+            oninput="updateExtra(${i},'promo',+this.value)">
+        </div>
+        <div>
+          <div style="font-size:10px;font-weight:700;color:var(--azul);text-transform:uppercase;margin-bottom:2px">Cobrado $</div>
+          <input class="campo-input" type="number" min="0" value="${ex.cobrado||''}" placeholder="${ex.cajas*ex.precio}"
+            oninput="updateExtra(${i},'cobrado',+this.value)">
+        </div>
+      </div>
+      <div class="pago-btns" style="margin-bottom:6px">
+        <div class="pago-btn${(ex.tipoPago||'efectivo')==='efectivo'?' sel-ef':''}" onclick="updateExtra(${i},'tipoPago','efectivo')">💵 Efectivo</div>
+        <div class="pago-btn${ex.tipoPago==='transferencia'?' sel-tr':''}" onclick="updateExtra(${i},'tipoPago','transferencia')">🏦 Transfer.</div>
+        <div class="pago-btn${ex.tipoPago==='credito'?' sel-cr':''}" onclick="updateExtra(${i},'tipoPago','credito')">📋 Crédito</div>
+      </div>
+      <input type="text" class="obs-input" placeholder="Observación..." value="${esc(ex.obs||'')}"
+        oninput="updateExtra(${i},'obs',this.value)">
+    </div>`).join('');
+
+}
+
+function agregarExtra(){
+  const cliente=document.getElementById('ex-cliente')?.value.trim();
+  const cajas=+(document.getElementById('ex-cajas')?.value)||0;
+  const promo=+(document.getElementById('ex-promo')?.value)||0;
+  const precio=+(document.getElementById('ex-precio')?.value)||0;
+  const zona=document.getElementById('ex-zona')?.value.trim()||'Extra';
+  if(!cliente){ showToast('Escribe el nombre del cliente'); return; }
+  if(!cajas&&!promo){ showToast('Ingresa al menos una caja'); return; }
+  if(!cuadreLocal.extras) cuadreLocal.extras=[];
+  cuadreLocal.extras.push({
+    cliente, cajas, promo, precio, zona,
+    cobrado:'', tipoPago:'efectivo', estado:'entregado', obs:''
+  });
+  // Clear inputs
+  ['ex-cliente','ex-cajas','ex-promo','ex-precio','ex-zona'].forEach(id=>{
+    const el=document.getElementById(id); if(el) el.value='';
+  });
+  renderExtras();
+  recalcTotales(getItemsCam(activeCamId));
+  recalcResumen();
+  showToast('Cliente extra agregado ✓');
+}
+
+function updateExtra(i, field, val){
+  if(!cuadreLocal.extras||!cuadreLocal.extras[i]) return;
+  cuadreLocal.extras[i][field]=val;
+  if(field==='tipoPago') renderExtras();
+  recalcTotales(getItemsCam(activeCamId));
+  recalcResumen();
+}
+
+function quitarExtra(i){
+  if(!cuadreLocal.extras) return;
+  cuadreLocal.extras.splice(i,1);
+  renderExtras();
+  recalcTotales(getItemsCam(activeCamId));
+  recalcResumen();
 }
 
 function showToast(m){const t=document.getElementById('toast');t.textContent=m;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2500);}
