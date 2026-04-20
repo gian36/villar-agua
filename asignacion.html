@@ -467,7 +467,7 @@ function defaultCams(){
 
 function cargaCam(cid){
   let t=0;
-  Object.keys(subs).forEach(sid=>{subs[sid].pedidos.forEach((p,i)=>{if(asig[sid+'__'+i]===cid)t+=p.cajas+p.promo;});});
+  Object.keys(allSubs).forEach(gk=>{allSubs[gk].pedidos.forEach((p,i)=>{const _a=asig[gk+'__'+i];if(_a&&(_a.camionId===cid||_a===cid))t+=p.cajas+p.promo;});});
   return t;
 }
 
@@ -584,8 +584,8 @@ function togglePrev(bodyId,chevId){
 
 function actualizarStats(){
   let totCli=0,totCaj=0,sinAsig=0;
-  Object.keys(subs).forEach(sid=>{
-    const s=subs[sid];totCaj+=s.totalCajas+s.totalPromo;
+  Object.keys(subs).forEach(gk=>{
+    const s=allSubs[gk];totCaj+=s.totalCajas+s.totalPromo;
     s.pedidos.forEach((_,i)=>{totCli++;if(!asig[sid+'__'+i])sinAsig++;});
   });
   document.getElementById('st-prev').textContent=Object.keys(subs).length;
@@ -677,9 +677,9 @@ async function agregarManual(){
   if(!cli){showToast('Escribe el nombre del cliente');return;}
   if(!caj&&!pro){showToast('Ingresa cajas o promoción');return;}
   const p={id:Date.now(),cliente:cli,cajas:caj,promo:pro,precio:pre,total:caj*pre,credito:false,ncf:false,rnc:'',nota:''};
-  const ek=Object.keys(subs).find(k=>subs[k].zona===zona&&subs[k].vendedor===vend);
-  if(ek){subs[ek].pedidos.push(p);subs[ek].totalCajas+=caj;subs[ek].totalPromo+=pro;subs[ek].totalDinero+=p.total;}
-  else{const sid='manual_'+Date.now();subs[sid]={id:sid,vendedor:vend,zona,fecha:new Date().toISOString().slice(0,10),enviado:new Date().toISOString(),pedidos:[p],totalCajas:caj,totalPromo:pro,totalDinero:p.total,asignado:false};}
+  const ek=Object.keys(allSubs).find(k=>allSubs[k].zona===zona&&allSubs[k].vendedor===vend);
+  if(ek){allSubs[ek].pedidos.push(p);allSubs[ek].totalCajas+=caj;allSubs[ek].totalPromo+=pro;allSubs[ek].totalDinero+=p.total;}
+  else{const jornadaKey=hoy()+'__manual_'+Date.now();allSubs[jornadaKey]={id:sid,vendedor:vend,zona,fecha:new Date().toISOString().slice(0,10),enviado:new Date().toISOString(),pedidos:[p],totalCajas:caj,totalPromo:pro,totalDinero:p.total,asignado:false,jornadaPedido:hoy()};}
   await guardar();
   ['m-zona','m-vend','m-cli','m-caj','m-pro'].forEach(id=>{document.getElementById(id).value='';});
   renderPedidos();actualizarStats();showToast('Cliente agregado ✓');
@@ -804,7 +804,7 @@ function genResumenCam(){
   if(!cid){out.textContent='Selecciona un camión arriba.';return;}
   const cam=cams.find(c=>c.id===cid);
   const items=[];
-  Object.keys(subs).forEach(sid=>{subs[sid].pedidos.forEach((p,i)=>{if(asig[sid+'__'+i]===cid)items.push({p,zona:subs[sid].zona});});});
+  Object.keys(allSubs).forEach(gk=>{allSubs[gk].pedidos.forEach((p,i)=>{const _a=asig[gk+'__'+i];if(_a&&(_a.camionId===cid||_a===cid))items.push({p,zona:allSubs[gk].zona});});});
   if(!items.length){out.textContent='Sin clientes asignados.';return;}
   const zonas=[...new Set(items.map(x=>x.zona))].join('+');
   const tot=items.reduce((a,x)=>a+x.p.cajas+x.p.promo,0);
@@ -865,8 +865,8 @@ async function finalizarAsignaciones(){
   let alguno = false;
   cams.forEach(cam=>{
     const items=[];
-    Object.keys(subs).forEach(sid=>{
-      subs[sid].pedidos.forEach((p,i)=>{if(asig[sid+'__'+i]===cam.id)items.push(true);});
+    Object.keys(allSubs).forEach(gk=>{
+      allSubs[gk].pedidos.forEach((p,i)=>{const _a=asig[gk+'__'+i];if(_a&&(_a.camionId===cam.id||_a===cam.id))items.push(true);});
     });
     if(items.length){
       cam.asignacionId = generarNumAsig(cam.nombre, fecha);
@@ -890,8 +890,8 @@ function renderFinalizados(){
   cams.forEach(cam=>{
     if(!cam.asignacionId) return;
     const items=[];
-    Object.keys(subs).forEach(sid=>{
-      subs[sid].pedidos.forEach((p,i)=>{if(asig[sid+'__'+i]===cam.id)items.push({p,zona:subs[sid].zona});});
+    Object.keys(allSubs).forEach(gk=>{
+      allSubs[gk].pedidos.forEach((p,i)=>{const _a=asig[gk+'__'+i];if(_a&&(_a.camionId===cam.id||_a===cam.id))items.push({p,zona:allSubs[gk].zona});});
     });
     if(!items.length) return;
     const tot=items.reduce((a,x)=>a+x.p.cajas+x.p.promo,0);
