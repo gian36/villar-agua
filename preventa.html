@@ -249,6 +249,11 @@ select { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.o
 .setup-title { font-size: 24px; font-weight: 800; }
 .setup-sub { font-size: 14px; opacity: .75; margin-top: 6px; }
 </style>
+<style id="ver-style">
+#app-version{position:fixed;bottom:4px;right:6px;font-size:10px;color:rgba(255,255,255,.5);
+background:rgba(0,0,0,.3);padding:2px 6px;border-radius:4px;z-index:9999;
+font-family:monospace;pointer-events:none;user-select:none}
+</style>
 </head>
 <body>
 
@@ -872,5 +877,6 @@ async function enviarPedidoSistema() {
   }
 }
 </script>
+<div id="app-version">Preventa v1.20260420</div>
 </body>
 </html>
