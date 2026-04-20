@@ -303,22 +303,35 @@ async function cargarDatos(){
     if(binCache.jornadas){
       Object.keys(binCache.jornadas).forEach(fecha=>{
         const j=binCache.jornadas[fecha];
-        // Collect pedidos
         if(j.pedidos){
           Object.keys(j.pedidos).forEach(sid=>{
             const gk=fecha+'__'+sid;
             allSubs[gk]={...j.pedidos[sid], jornadaPedido:fecha};
           });
         }
-        // Collect asignaciones
         if(j.asignaciones){
           Object.keys(j.asignaciones).forEach(k=>{
-            // key format: sid__pi → expand to fecha__sid__pi
             const gk=fecha+'__'+k;
             asig[gk]=j.asignaciones[k];
           });
         }
       });
+    }
+    // Legacy format: pedidos at root level (before jornadas patch)
+    if(binCache.pedidos && Object.keys(binCache.pedidos).length>0){
+      const legacyFecha=hoy(); // treat legacy as today
+      Object.keys(binCache.pedidos).forEach(sid=>{
+        const gk=legacyFecha+'__'+sid;
+        if(!allSubs[gk]){ // don't overwrite if already in jornadas
+          allSubs[gk]={...binCache.pedidos[sid], jornadaPedido:legacyFecha};
+        }
+      });
+      if(binCache.asignaciones){
+        Object.keys(binCache.asignaciones).forEach(k=>{
+          const gk=legacyFecha+'__'+k;
+          if(!asig[gk]) asig[gk]=binCache.asignaciones[k];
+        });
+      }
     }
   }catch(e){
     showToast('Error: '+e.message); console.error(e);
@@ -363,32 +376,31 @@ function renderAlertas(){
   const cont=document.getElementById('alertas-anteriores');
   if(!cont) return;
   const todayStr=hoy();
-  // Find jornadas before today with unassigned clients
-  const alertas=[];
-  if(binCache.jornadas){
-    Object.keys(binCache.jornadas).sort().forEach(fecha=>{
-      if(fecha>=todayStr) return; // only past days
-      const j=binCache.jornadas[fecha];
-      if(!j.pedidos) return;
-      let sinAsignar=0;
-      Object.keys(j.pedidos).forEach(sid=>{
-        const s=j.pedidos[sid];
-        s.pedidos.forEach((_,pi)=>{
-          const gk=fecha+'__'+sid+'__'+pi;
-          if(!asig[gk]) sinAsignar++;
-        });
-      });
-      if(sinAsignar>0) alertas.push({fecha, sinAsignar});
+
+  // Gather all past jornadas that have unassigned clients
+  const pendientesPorFecha={};
+  Object.keys(allSubs).forEach(gk=>{
+    const s=allSubs[gk];
+    const fecha=s.jornadaPedido;
+    if(!fecha||fecha>=todayStr) return;
+    s.pedidos.forEach((_,pi)=>{
+      if(!asig[gk+'__'+pi]){
+        if(!pendientesPorFecha[fecha]) pendientesPorFecha[fecha]=0;
+        pendientesPorFecha[fecha]++;
+      }
     });
-  }
-  if(!alertas.length){ cont.innerHTML=''; return; }
-  cont.innerHTML=alertas.map(a=>`
+  });
+
+  const fechas=Object.keys(pendientesPorFecha).sort().reverse();
+  if(!fechas.length){ cont.innerHTML=''; return; }
+
+  cont.innerHTML=fechas.map(fecha=>`
     <div style="margin:6px 12px;padding:10px 14px;border-radius:10px;background:#fef3c7;border-left:4px solid #f59e0b;display:flex;align-items:center;justify-content:space-between;gap:10px">
       <div>
-        <div style="font-size:13px;font-weight:700;color:#92400e">⚠ ${fmtJornada(a.fecha)} — ${a.sinAsignar} cliente${a.sinAsignar>1?'s':''} sin asignar</div>
+        <div style="font-size:13px;font-weight:700;color:#92400e">⚠ ${fmtJornada(fecha)} — ${pendientesPorFecha[fecha]} cliente${pendientesPorFecha[fecha]>1?'s':''} sin asignar</div>
         <div style="font-size:11px;color:#92400e;margin-top:2px">Pedidos de días anteriores pendientes de asignación</div>
       </div>
-      <button onclick="filtrarJornada('${a.fecha}')"
+      <button onclick="filtrarJornada('${fecha}')"
         style="flex-shrink:0;padding:7px 12px;background:#92400e;color:white;border:none;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer">
         Ver pedidos
       </button>
@@ -399,6 +411,7 @@ function renderAlertas(){
 let filtroJornada=null; // null = show all pending
 function filtrarJornada(fecha){
   filtroJornada=fecha;
+  console.log('filtrarJornada:', fecha, 'allSubs keys:', Object.keys(allSubs).length, Object.keys(allSubs).slice(0,3));
   renderPedidos();
   // Scroll to prev-list
   document.getElementById('prev-list')?.scrollIntoView({behavior:'smooth'});
