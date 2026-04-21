@@ -489,7 +489,14 @@ function cargarJornada(){
   const info=document.getElementById('jornada-info');
   const nAsig=Object.keys(asig).length;
   if(info) info.textContent=fmtJornada(jornadaActiva)+' · '+Object.keys(subs).length+' preventas · '+nAsig+' asignaciones';
-  renderDashboard(); actualizarStats();
+  renderDashboard();
+  // Update stats
+  const _activeCams=(cams||[]).filter(cam=>Object.keys(asig).some(k=>(asig[k]&&(asig[k].camionId===cam.id||asig[k]===cam.id))));
+  const _totCli=Object.keys(subs).reduce((a,sid)=>a+subs[sid].pedidos.length,0);
+  const _totCaj=Object.keys(subs).reduce((a,sid)=>a+subs[sid].totalCajas+subs[sid].totalPromo,0);
+  const _sinAsig=Object.keys(subs).reduce((a,sid)=>a+subs[sid].pedidos.filter((_,i)=>!asig[sid+'__'+i]).length,0);
+  const _s=(id,v)=>{const e=document.getElementById(id);if(e)e.textContent=v;};
+  _s('st-prev',Object.keys(subs).length);_s('st-cli',_totCli);_s('st-caj',_totCaj);_s('st-sin',_sinAsig);
 }
 
 async function diagnosticarConexion(){

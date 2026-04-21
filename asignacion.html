@@ -730,7 +730,7 @@ function renderCamConfig(){
       <div class="cam-body" id="cfg-${cam.id}">
         <div class="cam-cfg">
           <input type="text" value="${esc(cam.nombre)}" placeholder="Nombre del camión" onchange="updCam(${i},'nombre',this.value)">
-          <input type="text" value="${esc(cam.chofer)}" placeholder="Nombre del chofer" onchange="updCam(${i},'chofer',this.value)">
+          <input type="text" value="${esc(cam.chofer)}" placeholder="Nombre del responsable" onchange="updCam(${i},'chofer',this.value)">
           <input type="number" value="${cam.capacidad||''}" placeholder="Capacidad máx. en cajas (opcional)" min="0" inputmode="numeric" onchange="updCam(${i},'capacidad',+this.value)">
         </div>
         <button onclick="elimCam(${i})" style="margin-top:8px;width:100%;background:var(--rojo-bg);color:var(--rojo);border:none;border-radius:8px;padding:8px;font-size:13px;font-weight:600;cursor:pointer">Eliminar camión</button>
@@ -1016,7 +1016,7 @@ function imprimirCamion(camId){
     +'</div>'
     +'<div class="meta">'
     +'<div class="mb"><div class="ml">Camión</div><div class="mv">'+esc(cam.nombre)+'</div></div>'
-    +'<div class="mb"><div class="ml">Chofer</div><div class="mv">'+esc(cam.chofer)+'</div></div>'
+    +'<div class="mb"><div class="ml">Responsable</div><div class="mv">'+esc(cam.chofer)+'</div></div>'
     +'<div class="mb"><div class="ml">Fecha</div><div class="mv">'+fechaStr+'</div></div>'
     +'<div class="mb"><div class="ml">Zonas</div><div class="mv" style="font-size:7.5pt">'+zonas+'</div></div>'
     +'<div class="mb"><div class="ml">Total cajas</div><div class="mv" style="color:#166534">'+totC+'</div></div>'
@@ -1055,7 +1055,7 @@ function imprimirCamion(camId){
     +'</div>'
     +'</div>'
     +'<div class="fi">'
-    +'<div><div class="fl"></div><div class="fll">Chofer / Firma</div></div>'
+    +'<div><div class="fl"></div><div class="fll">Responsable / Firma</div></div>'
     +'<div><div class="fl"></div><div class="fll">Supervisor / Revisó</div></div>'
     +'<div><div class="fl"></div><div class="fll">Caja / Recibió $</div></div>'
     +'</div>'
