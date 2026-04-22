@@ -175,7 +175,7 @@ font-family:monospace;pointer-events:none;user-select:none}
       <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">
         <input type="number" id="m-caj" placeholder="Cajas" inputmode="numeric" min="0">
         <input type="number" id="m-pro" placeholder="Promo" inputmode="numeric" min="0">
-        <select id="m-pre"><option value="140">$140</option><option value="125">$125</option><option value="115">$115</option><option value="0">Promo</option></select>
+        <input type="number" id="m-pre" placeholder="$/caja" min="0" inputmode="numeric" style="font-size:15px;padding:10px 12px;border:1.5px solid var(--borde);border-radius:10px;background:var(--gris);width:100%">
       </div>
     </div>
     <button class="btn btn-azul2" style="margin:10px 0 0" onclick="agregarManual()">+ Agregar cliente</button>
@@ -582,7 +582,10 @@ function renderPedidos(){
           <span class="prev-chevron" id="pchev-${gk.replace(/\W/g,'_')}">›</span>
         </div>
         <div class="prev-body" id="pbody-${gk.replace(/\W/g,'_')}">
-          <div style="font-size:11px;color:var(--muted);padding:8px 0 2px;font-weight:600">Asignar toda la ruta a un camión:</div>
+          <div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0 2px">
+          <span style="font-size:11px;color:var(--muted);font-weight:600">Asignar toda la ruta a un camión:</span>
+          <button onclick="event.stopPropagation();eliminarPreventa('${gk}')" style="font-size:11px;padding:3px 10px;background:var(--rojo-bg);color:var(--rojo);border:none;border-radius:6px;font-weight:600;cursor:pointer">🗑 Eliminar</button>
+        </div>
           <div class="truck-bar">${trucks}</div>
           <div style="font-size:11px;color:var(--muted);padding:4px 0;font-weight:600">O toca un cliente para asignar individualmente:</div>
           ${rows}
@@ -860,6 +863,27 @@ function abrirWA(){window.open('https://wa.me/?text='+encodeURIComponent(documen
 
 function fmt(n){return Number(n).toLocaleString('es-DO');}
 function esc(s){if(!s)return'';const d=document.createElement('div');d.textContent=s;return d.innerHTML;}
+/* ── ELIMINAR PREVENTA ── */
+async function eliminarPreventa(gk){
+  const s=allSubs[gk];
+  if(!s) return;
+  const hasAsig=s.pedidos.some((_,pi)=>asig[gk+'__'+pi]);
+  const msg=hasAsig
+    ?'Esta ruta tiene clientes asignados. ¿Eliminar de todas formas?'
+    :'¿Eliminar esta ruta sin asignar?';
+  if(!confirm(msg)) return;
+  Object.keys(asig).forEach(k=>{ if(k.startsWith(gk+'__')) delete asig[k]; });
+  delete allSubs[gk];
+  const fecha=s.jornadaPedido;
+  if(binCache.jornadas&&binCache.jornadas[fecha]&&binCache.jornadas[fecha].pedidos){
+    const sid=gk.slice(fecha.length+2);
+    delete binCache.jornadas[fecha].pedidos[sid];
+  }
+  await guardar();
+  renderAlertas(); renderPedidos(); actualizarStats();
+  showToast('Ruta eliminada ✓');
+}
+
 function showToast(m){const t=document.getElementById('toast');t.textContent=m;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2500);}
 
 /* ── NÚMERO DE ASIGNACIÓN ── */
@@ -958,6 +982,7 @@ function imprimirCamion(camId){
     return '<tr>'
       +'<td>'+(i+1)+'</td>'
       +'<td>'+p.cliente+sub+'</td>'
+      +'<td style="font-size:7pt;text-align:center;color:#64748b">'+esc(x.zona||'')+'</td>'
       +'<td>'+p.cajas+'</td>'
       +'<td>'+(p.promo||'')+'</td>'
       +'<td>$'+p.precio+'</td>'
@@ -1025,11 +1050,12 @@ function imprimirCamion(camId){
     +'<thead><tr>'
     +'<th style="width:16px">#</th>'
     +'<th style="text-align:left">Cliente</th>'
+    +'<th style="width:55px">Zona</th>'
     +'<th>V.Prev</th><th>Prom</th><th>$/cj</th><th>Total $</th>'
     +'<th>Entregó</th><th>Observación</th>'
     +'</tr></thead>'
     +'<tbody>'+filas+'</tbody>'
-    +'<tfoot><tr><td colspan="2">TOTALES</td><td>'+totV+'</td><td>'+totP+'</td><td>—</td>'
+    +'<tfoot><tr><td colspan="3">TOTALES</td><td>'+totV+'</td><td>'+totP+'</td><td>—</td>'
     +'<td style="text-align:right">$'+fmt(totD)+'</td><td colspan="2"></td></tr></tfoot>'
     +'</table>'
     +'<div class="bot">'
@@ -1070,6 +1096,6 @@ function imprimirCamion(camId){
 
 
 </script>
-<div id="app-version">Asignacion v1.20260420</div>
+<div id="app-version">Asignacion v1.20260422</div>
 </body>
 </html>
