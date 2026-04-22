@@ -316,6 +316,29 @@ font-family:monospace;pointer-events:none;user-select:none}
           <td id="tf-cobrado">$0</td>
           <td colspan="3"></td>
         </tr></tfoot>
+      <!-- Extra clients appended to tbody by renderExtras() -->
+      <tfoot id="extras-tfoot" style="display:none">
+        <tr>
+          <td colspan="11" style="background:var(--celeste);padding:0">
+            <!-- Add extra form row -->
+            <table style="width:100%;border-collapse:collapse">
+              <tr style="background:var(--celeste)">
+                <td style="width:28px;text-align:center;padding:6px 4px;font-size:11px;font-weight:700;color:var(--azul2)">➕</td>
+                <td style="padding:4px 6px"><input type="text" id="ex-cliente" placeholder="Nombre del cliente" class="tbl-obs" style="width:100%"></td>
+                <td style="padding:4px 4px;width:55px"><input type="text" id="ex-zona" placeholder="Zona" class="tbl-obs" style="width:100%"></td>
+                <td style="padding:4px 4px;width:70px"><input type="number" id="ex-cajas" placeholder="V" min="0" class="tbl-input" style="width:100%"></td>
+                <td style="padding:4px 4px;width:60px"></td>
+                <td style="padding:4px 4px;width:60px"><input type="number" id="ex-promo" placeholder="P" min="0" class="tbl-input" style="width:100%"></td>
+                <td style="padding:4px 4px;width:80px"></td>
+                <td style="padding:4px 4px;width:80px"><input type="number" id="ex-precio" placeholder="$/cj" min="0" class="tbl-input" style="width:100%"></td>
+                <td colspan="3" style="padding:4px 6px">
+                  <button onclick="agregarExtra()" style="padding:5px 14px;background:var(--azul2);color:white;border:none;border-radius:6px;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap">+ Agregar cliente extra</button>
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+      </tfoot>
       </table>
     </div>
 
@@ -372,22 +395,6 @@ font-family:monospace;pointer-events:none;user-select:none}
       <div class="sidebar-section">
         <div class="sidebar-title">🗺 Por zona</div>
         <div id="zona-resumen"><div style="font-size:12px;color:var(--muted);text-align:center;padding:6px">Llena el cuadre...</div></div>
-      </div>
-
-      <!-- Extra clients panel -->
-      <div style="margin-top:10px;background:var(--celeste);border-radius:8px;padding:10px 12px">
-        <div style="font-size:12px;font-weight:700;color:var(--azul);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">
-          ➕ Clientes extra / emergencia
-        </div>
-        <div id="extras-list"></div>
-        <div style="display:grid;grid-template-columns:2fr 1fr 1fr 1fr 1fr auto;gap:6px;margin-top:6px;align-items:end">
-          <input type="text" id="ex-cliente" placeholder="Nombre del cliente" style="font-size:13px;padding:5px 8px">
-          <input type="number" id="ex-cajas" placeholder="Cajas" min="0" inputmode="numeric" style="font-size:13px;padding:5px 8px">
-          <input type="number" id="ex-promo" placeholder="Promo" min="0" inputmode="numeric" style="font-size:13px;padding:5px 8px">
-          <input type="number" id="ex-precio" placeholder="$/cj" min="0" inputmode="numeric" style="font-size:13px;padding:5px 8px">
-          <input type="text" id="ex-zona" placeholder="Zona" style="font-size:13px;padding:5px 8px">
-          <button onclick="agregarExtra()" style="padding:6px 12px;background:var(--azul2);color:white;border:none;border-radius:6px;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap">+ Agregar</button>
-        </div>
       </div>
 
       <!-- Sticky action buttons -->
@@ -708,6 +715,9 @@ function abrirCuadre(camId){
 
   renderClientesCuadre(camId);
   renderExtras();
+  // Always show the add-extra form
+  const tf=document.getElementById('extras-tfoot');
+  if(tf) tf.style.display='table-footer-group';
   recalcResumen();
   renderZonaResumen();
   renderPagoSummary();
@@ -1317,64 +1327,61 @@ function copiarResumenExport(){
 
 /* ── EXTRAS ── */
 function renderExtras(){
-  const cont=document.getElementById('extras-list');
-  if(!cont) return;
-  const extras=cuadreLocal.extras||[];
-  if(!extras.length){ cont.innerHTML=''; return; }
-  
-  cont.innerHTML=extras.map((ex,i)=>`
-    <tr class="ok-row" id="ex-${i}">
-      <td style="text-align:center;font-size:11px;color:var(--azul2)">E${i+1}</td>
-      <td><strong>${esc(ex.cliente)}</strong><span class="tag-sm tag-ncf" style="margin-left:4px">EXTRA</span>
-        <div style="font-size:10px;color:var(--muted)">$${ex.precio}/cj · $${fmt(ex.cajas*ex.precio)}</div></td>
-      <td style="text-align:center">—</td>
-      <td><input class="tbl-input" type="number" min="0" value="${ex.cajas}" style="width:50px"
-        oninput="updateExtra(${i},'cajas',+this.value)"></td>
-      <td style="text-align:center">—</td>
-      <td><input class="tbl-input" type="number" min="0" value="${ex.promo}" style="width:42px"
-        oninput="updateExtra(${i},'promo',+this.value)"></td>
-      <td><input class="tbl-input" type="number" min="0" value="${ex.cobrado||''}" style="width:70px"
-        placeholder="${ex.cajas*ex.precio}"
-        oninput="updateExtra(${i},'cobrado',+this.value)"></td>
-      <td><div class="pago-mini">
-        <div class="pago-mini-btn${(ex.tipoPago||'efectivo')==='efectivo'?' sel-ef':''}" onclick="updateExtra(${i},'tipoPago','efectivo')">💵</div>
-        <div class="pago-mini-btn${ex.tipoPago==='transferencia'?' sel-tr':''}" onclick="updateExtra(${i},'tipoPago','transferencia')">🏦</div>
-        <div class="pago-mini-btn${ex.tipoPago==='credito'?' sel-cr':''}" onclick="updateExtra(${i},'tipoPago','credito')">📋</div>
-      </div></td>
-      <td><select class="tbl-select" onchange="updateExtra(${i},'estado',this.value)">
-        <option value="entregado" ${(ex.estado||'entregado')==='entregado'?'selected':''}>✓ OK</option>
-        <option value="parcial" ${ex.estado==='parcial'?'selected':''}>⚠ Parcial</option>
-        <option value="devuelto" ${ex.estado==='devuelto'?'selected':''}>↩ No</option>
-      </select></td>
-      <td><input type="text" class="tbl-obs" placeholder="Nota..." value="${esc(ex.obs||'')}"
-        oninput="updateExtra(${i},'obs',this.value)">
-        <button onclick="quitarExtra(${i})" style="margin-top:2px;font-size:10px;padding:1px 6px;background:var(--rojo-bg);color:var(--rojo);border:none;border-radius:4px;cursor:pointer">× quitar</button>
-      </td>
-    </tr>`).join('');
-  // Insert into tbody after existing rows
   const tbody=document.getElementById('clientes-cuadre');
-  if(tbody){
-    // Remove old extra rows first
-    tbody.querySelectorAll('[id^="ex-"]').forEach(r=>r.remove());
-    // Add separator + new extras
-    if(extras.length){
-      const sep=document.createElement('tr');
-      sep.id='ex-sep';
-      sep.innerHTML='<td colspan="11" style="background:var(--celeste);font-size:10px;font-weight:700;color:var(--azul);text-transform:uppercase;letter-spacing:.5px;padding:4px 8px">Clientes extra / emergencia</td>';
-      tbody.querySelector('[id^="ex-sep"]')?.remove();
-      tbody.appendChild(sep);
-      extras.forEach((ex,i)=>{
-        const existing=tbody.querySelector('#ex-'+i);
-        if(existing) existing.remove();
-        const tmp=document.createElement('tbody');
-        tmp.innerHTML=cont.innerHTML.split('</tr>')[i]+'</tr>';
-        const tr=tmp.querySelector('tr');
-        if(tr) tbody.appendChild(tr);
-      });
-      cont.innerHTML='';
-    }
-  }
+  if(!tbody) return;
 
+  // Remove existing extra rows and separator
+  tbody.querySelectorAll('.extra-tr, .extra-sep-tr').forEach(r=>r.remove());
+
+  const extras=cuadreLocal.extras||[];
+
+  // Show/hide the add form tfoot
+  const tfoot=document.getElementById('extras-tfoot');
+  if(tfoot) tfoot.style.display='table-footer-group';
+
+  if(!extras.length) return;
+
+  // Insert separator
+  const sep=document.createElement('tr');
+  sep.className='extra-sep-tr';
+  sep.innerHTML='<td colspan="11" style="background:var(--celeste);font-size:10px;font-weight:700;color:var(--azul);text-transform:uppercase;letter-spacing:.5px;padding:4px 8px">➕ Clientes extra / emergencia</td>';
+  tbody.appendChild(sep);
+
+  // Insert extra rows
+  extras.forEach((ex,i)=>{
+    const tr=document.createElement('tr');
+    tr.className='ok-row extra-tr';
+    tr.id='ex-'+i;
+    tr.innerHTML=
+      '<td style="text-align:center;font-size:11px;color:var(--azul2)">E'+(i+1)+'</td>'
+      +'<td><strong>'+esc(ex.cliente)+'</strong><span class="tag-sm tag-ncf" style="margin-left:4px">EXTRA</span>'
+        +'<div style="font-size:10px;color:var(--muted)">'+esc(ex.zona||'')+'</div></td>'
+      +'<td style="text-align:center;font-size:11px">'+esc(ex.zona||'')+'</td>'
+      +'<td style="text-align:center">—</td>'
+      +'<td><input class="tbl-input" type="number" min="0" value="'+ex.cajas+'" style="width:50px"'
+        +' oninput="updateExtra('+i+',\'cajas\',+this.value)"></td>'
+      +'<td style="text-align:center">—</td>'
+      +'<td><input class="tbl-input" type="number" min="0" value="'+ex.promo+'" style="width:42px"'
+        +' oninput="updateExtra('+i+',\'promo\',+this.value)"></td>'
+      +'<td><input class="tbl-input" type="number" min="0" value="'+(ex.cobrado||'')+'" style="width:70px"'
+        +' placeholder="'+(ex.cajas*ex.precio)+'"'
+        +' oninput="updateExtra('+i+',\'cobrado\',+this.value)"></td>'
+      +'<td><div class="pago-mini">'
+        +'<div class="pago-mini-btn'+((ex.tipoPago||'efectivo')==='efectivo'?' sel-ef':'')+'" onclick="updateExtra('+i+',\'tipoPago\',\'efectivo\')">💵</div>'
+        +'<div class="pago-mini-btn'+(ex.tipoPago==='transferencia'?' sel-tr':'')+'" onclick="updateExtra('+i+',\'tipoPago\',\'transferencia\')">🏦</div>'
+        +'<div class="pago-mini-btn'+(ex.tipoPago==='credito'?' sel-cr':'')+'" onclick="updateExtra('+i+',\'tipoPago\',\'credito\')">📋</div>'
+        +'</div></td>'
+      +'<td><select class="tbl-select" onchange="updateExtra('+i+',\'estado\',this.value)">'
+        +'<option value="entregado" '+((ex.estado||'entregado')==='entregado'?'selected':'')+'>✓ OK</option>'
+        +'<option value="parcial" '+(ex.estado==='parcial'?'selected':'')+'>⚠ Parcial</option>'
+        +'<option value="devuelto" '+(ex.estado==='devuelto'?'selected':'')+'>↩ No</option>'
+        +'</select></td>'
+      +'<td><input type="text" class="tbl-obs" placeholder="Nota..." value="'+esc(ex.obs||'')+'"'
+        +' oninput="updateExtra('+i+',\'obs\',this.value)">'
+        +'<button onclick="quitarExtra('+i+')" style="margin-top:2px;font-size:10px;padding:1px 6px;background:var(--rojo-bg);color:var(--rojo);border:none;border-radius:4px;cursor:pointer">× quitar</button>'
+        +'</td>';
+    tbody.appendChild(tr);
+  });
 }
 
 function agregarExtra(){
