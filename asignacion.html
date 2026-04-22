@@ -1,0 +1,1075 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#0a3d6b">
+<title>Encargado – Villar Agua</title>
+<style>
+:root {
+  --azul:#0a3d6b;--azul2:#1565c0;--celeste:#dbeafe;
+  --verde:#166534;--verde-bg:#dcfce7;
+  --rojo:#991b1b;--rojo-bg:#fee2e2;
+  --ambar:#92400e;--ambar-bg:#fef3c7;
+  --gris:#f8fafc;--gris2:#e2e8f0;
+  --texto:#1e293b;--muted:#64748b;--borde:#cbd5e1;--blanco:#ffffff;--radio:12px;
+}
+
+
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#e8f0fe;color:var(--texto);min-height:100vh;font-size:15px}
+.topbar{background:var(--azul);color:white;padding:12px 16px;position:sticky;top:0;z-index:200;display:flex;align-items:center;justify-content:space-between}
+.topbar-title{font-size:17px;font-weight:700}
+.topbar-sub{font-size:11px;opacity:.7;margin-top:1px}
+.tabs{background:var(--azul);display:flex;border-top:1px solid rgba(255,255,255,.15);position:sticky;top:56px;z-index:199}
+.tab{flex:1;padding:11px 4px;text-align:center;font-size:13px;font-weight:600;color:rgba(255,255,255,.55);cursor:pointer;border-bottom:3px solid transparent;transition:.15s}
+.tab.active{color:white;border-bottom-color:white}
+.screen{display:none;padding-bottom:80px}
+.screen.active{display:block}
+.card{background:var(--blanco);border-radius:var(--radio);box-shadow:0 1px 4px rgba(0,0,0,.1);margin:10px 12px;padding:14px}
+.card-title{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--muted);margin-bottom:10px}
+.stats-row{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin:10px 12px 6px}
+.stat{background:var(--blanco);border-radius:10px;padding:8px 4px;text-align:center;box-shadow:0 1px 3px rgba(0,0,0,.08)}
+.stat-v{font-size:20px;font-weight:700;color:var(--azul)}
+.stat-l{font-size:10px;color:var(--muted);margin-top:1px}
+.alert{margin:0 12px 6px;padding:10px 14px;border-radius:10px;font-size:13px;font-weight:600}
+.alert.warn{background:var(--ambar-bg);color:var(--ambar)}
+.alert.ok{background:var(--verde-bg);color:var(--verde)}
+.sec-label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--muted);padding:10px 12px 4px}
+/* Preventa blocks */
+.prev-block{background:var(--blanco);border-radius:var(--radio);box-shadow:0 1px 4px rgba(0,0,0,.1);margin:8px 12px;overflow:hidden}
+.prev-head{padding:12px 14px;display:flex;align-items:center;gap:10px;cursor:pointer;border-bottom:1px solid var(--gris2)}
+.prev-head-info{flex:1;min-width:0}
+.prev-head-name{font-size:15px;font-weight:700}
+.prev-head-meta{font-size:12px;color:var(--muted);margin-top:2px}
+.prev-chevron{font-size:18px;color:var(--muted);transition:transform .2s;flex-shrink:0}
+.prev-chevron.open{transform:rotate(90deg)}
+.prev-body{display:none;padding:0 12px 12px}
+.prev-body.open{display:block}
+/* Assign-all truck buttons */
+.truck-bar{display:flex;gap:7px;padding:10px 0 8px;overflow-x:auto;-webkit-overflow-scrolling:touch}
+.truck-bar::-webkit-scrollbar{display:none}
+.truck-btn{
+  flex-shrink:0;min-width:72px;padding:10px 8px;border:none;border-radius:10px;
+  background:var(--azul);color:white;font-size:12px;font-weight:700;cursor:pointer;
+  display:flex;flex-direction:column;align-items:center;gap:3px;
+  transition:transform .1s;
+}
+.truck-btn:active{transform:scale(.93)}
+.truck-btn .ticon{font-size:22px}
+.truck-btn .tname{font-size:11px;opacity:.9;max-width:68px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.truck-btn .tcap{font-size:10px;opacity:.8}
+/* Client rows */
+.cli-row{display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--gris2);cursor:pointer}
+.cli-row:last-child{border-bottom:none}
+.cli-check{width:22px;height:22px;border-radius:50%;border:2px solid var(--borde);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:12px;transition:.15s}
+.cli-row.has-asig .cli-check{background:var(--azul2);border-color:var(--azul2);color:white}
+.cli-info{flex:1;min-width:0}
+.cli-name{font-size:14px;font-weight:600}
+.cli-tags{display:flex;gap:3px;flex-wrap:wrap;margin-top:2px}
+.tag{display:inline-block;font-size:10px;font-weight:700;padding:2px 6px;border-radius:20px}
+.tag-v{background:#dbeafe;color:#1e40af}
+.tag-p{background:#fef3c7;color:#92400e}
+.tag-cred{background:var(--verde-bg);color:var(--verde)}
+.tag-ncf{background:#ede9fe;color:#4c1d95}
+.asig-lbl{font-size:11px;font-weight:700;padding:3px 8px;border-radius:20px;flex-shrink:0;white-space:nowrap}
+.asig-lbl.ok{background:var(--verde-bg);color:var(--verde)}
+.asig-lbl.no{background:var(--gris2);color:var(--muted)}
+/* Camiones tab */
+.camion-card{background:var(--blanco);border-radius:var(--radio);box-shadow:0 1px 4px rgba(0,0,0,.1);margin:8px 12px;overflow:hidden}
+.cam-head{padding:12px 14px;display:flex;align-items:center;gap:10px;cursor:pointer}
+.cam-head-info{flex:1;min-width:0}
+.cam-name{font-size:15px;font-weight:700;color:var(--azul);display:flex;align-items:center;gap:6px}
+.cam-chofer{font-size:12px;color:var(--muted);margin-top:2px}
+.cam-pills{display:flex;gap:5px;align-items:center;flex-shrink:0}
+.pill{font-size:12px;font-weight:700;padding:4px 9px;border-radius:20px;background:var(--celeste);color:var(--azul)}
+.pill.over{background:var(--rojo-bg);color:var(--rojo)}
+.pill.warn{background:var(--ambar-bg);color:var(--ambar)}
+.cam-body{display:none;border-top:1px solid var(--gris2);padding:12px 14px}
+.cam-body.open{display:block}
+.cap-bar-bg{background:var(--gris2);border-radius:20px;height:8px;overflow:hidden;margin:6px 0 3px}
+.cap-bar-fill{height:100%;border-radius:20px;transition:width .4s}
+.cap-ok{background:#22c55e}.cap-warn{background:#f59e0b}.cap-over{background:#ef4444}
+.cap-text{display:flex;justify-content:space-between;font-size:11px;color:var(--muted)}
+.cap-over-txt{color:var(--rojo);font-weight:700}
+.cam-cfg{display:grid;gap:6px;margin-top:10px}
+.cam-cli{display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--gris2)}
+.cam-cli:last-child{border-bottom:none}
+.cam-cli-info{flex:1;min-width:0}
+.cam-cli-name{font-size:13px;font-weight:600}
+.cam-cli-det{font-size:11px;color:var(--muted)}
+.btn-x{background:none;border:none;color:var(--borde);font-size:20px;cursor:pointer;padding:2px 6px;flex-shrink:0}
+.btn-x:active{color:var(--rojo)}
+.cam-empty{text-align:center;padding:14px 0;font-size:13px;color:var(--muted)}
+/* Resumen */
+.resumen-box{background:var(--gris);border:1px solid var(--borde);border-radius:10px;padding:12px;font-size:13px;font-family:'Courier New',monospace;white-space:pre-wrap;word-break:break-word;max-height:38vh;overflow-y:auto;margin-bottom:8px}
+/* Buttons */
+.btn{display:block;width:calc(100% - 24px);margin:6px 12px;padding:14px;border:none;border-radius:var(--radio);font-size:16px;font-weight:700;cursor:pointer;transition:transform .1s}
+.btn:active{transform:scale(.97)}
+.btn-blue{background:var(--azul);color:white}
+.btn-azul2{background:var(--azul2);color:white}
+.btn-green{background:#25D366;color:white}
+.btn-sky{background:#0ea5e9;color:white}
+.btn-sm{font-size:13px;padding:8px 14px;border:none;border-radius:8px;cursor:pointer;font-weight:600;width:100%}
+/* Modal */
+.modal-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:400;align-items:flex-end;justify-content:center}
+.modal-bg.open{display:flex}
+.modal{background:white;border-radius:18px 18px 0 0;padding:20px 16px;width:100%;max-height:82vh;overflow-y:auto}
+.modal-title{font-size:16px;font-weight:700;margin-bottom:4px}
+.modal-sub{font-size:13px;color:var(--muted);margin-bottom:14px}
+.mcam-btn{width:100%;padding:13px 16px;border:2px solid var(--borde);border-radius:12px;margin-bottom:8px;background:white;text-align:left;cursor:pointer;display:flex;align-items:center;gap:12px;transition:.15s}
+.mcam-btn:active,.mcam-btn.sel{border-color:var(--azul2);background:var(--celeste)}
+.mcam-icon{font-size:24px;flex-shrink:0}
+.mcam-info{flex:1;min-width:0}
+.mcam-name{font-size:15px;font-weight:700;color:var(--azul)}
+.mcam-det{font-size:12px;color:var(--muted);margin-top:1px}
+.modal-cancel{text-align:center;padding:14px;color:var(--muted);font-size:14px;cursor:pointer}
+/* Toast */
+.toast{position:fixed;bottom:88px;left:50%;transform:translateX(-50%) translateY(80px);background:#1e293b;color:white;padding:10px 20px;border-radius:30px;font-size:13px;font-weight:600;transition:transform .3s;z-index:500;white-space:nowrap;pointer-events:none}
+.toast.show{transform:translateX(-50%) translateY(0)}
+input[type="text"],input[type="number"],select{width:100%;font-size:15px;padding:10px 12px;border:1.5px solid var(--borde);border-radius:10px;background:var(--gris);color:var(--texto);appearance:none;-webkit-appearance:none;outline:none}
+input:focus,select:focus{border-color:var(--azul2);background:white}
+</style>
+<style id="ver-style">
+#app-version{position:fixed;bottom:4px;right:6px;font-size:10px;color:rgba(255,255,255,.5);
+background:rgba(0,0,0,.3);padding:2px 6px;border-radius:4px;z-index:9999;
+font-family:monospace;pointer-events:none;user-select:none}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div><div class="topbar-title">Distribución de Rutas</div><div class="topbar-sub" id="top-sub">Villar Agua · Encargado</div></div>
+  <button id="btn-refresh" onclick="cargarDatos()" style="background:rgba(255,255,255,.2);border:none;color:white;padding:7px 14px;border-radius:20px;font-size:13px;font-weight:600;cursor:pointer">⟳ Actualizar</button>
+</div>
+
+<div class="tabs">
+  <div class="tab active" onclick="switchTab('pedidos',this)">📋 Pedidos</div>
+  <div class="tab" onclick="switchTab('camiones',this)">🚛 Camiones</div>
+  <div class="tab" onclick="switchTab('enviar',this)">📤 Enviar</div>
+</div>
+
+<!-- TAB PEDIDOS -->
+<div class="screen active" id="screen-pedidos">
+  <!-- Alertas de jornadas anteriores con pendientes -->
+  <div id="alertas-anteriores"></div>
+
+  <div class="stats-row">
+    <div class="stat"><div class="stat-v" id="st-prev">0</div><div class="stat-l">Preventas</div></div>
+    <div class="stat"><div class="stat-v" id="st-cli">0</div><div class="stat-l">Clientes</div></div>
+    <div class="stat"><div class="stat-v" id="st-caj">0</div><div class="stat-l">Cajas</div></div>
+    <div class="stat"><div class="stat-v" id="st-sin" style="color:var(--rojo)">0</div><div class="stat-l">Sin asignar</div></div>
+  </div>
+  <div id="alerta" style="display:none" class="alert"></div>
+  <div style="font-size:12px;color:var(--muted);text-align:center;padding:2px 16px 6px">Toca 🚛 para asignar toda la ruta, o un cliente para asignarlo individualmente</div>
+  <div id="prev-list"></div>
+
+  <div class="sec-label">Agregar cliente / pedido tardío</div>
+  <div class="card">
+    <div style="display:grid;gap:8px">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+        <input type="text" id="m-zona" placeholder="Zona (ej: Zona 3)">
+        <input type="text" id="m-vend" placeholder="Vendedor / Ref.">
+      </div>
+      <input type="text" id="m-cli" placeholder="Nombre del cliente">
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">
+        <input type="number" id="m-caj" placeholder="Cajas" inputmode="numeric" min="0">
+        <input type="number" id="m-pro" placeholder="Promo" inputmode="numeric" min="0">
+        <select id="m-pre"><option value="140">$140</option><option value="125">$125</option><option value="115">$115</option><option value="0">Promo</option></select>
+      </div>
+    </div>
+    <button class="btn btn-azul2" style="margin:10px 0 0" onclick="agregarManual()">+ Agregar cliente</button>
+  </div>
+</div>
+
+<!-- TAB CAMIONES -->
+<div class="screen" id="screen-camiones">
+  <div class="sec-label">Configuración de camiones</div>
+  <div id="cam-config"></div>
+  <button class="btn btn-azul2" onclick="agregarCamion()">+ Agregar camión</button>
+  <div class="sec-label" style="margin-top:4px">Clientes por camión</div>
+  <div id="cam-detalle"></div>
+</div>
+
+<!-- TAB ENVIAR -->
+<div class="screen" id="screen-enviar">
+  <div class="card">
+    <div class="card-title">Resumen por camión</div>
+    <select id="sel-cam" onchange="genResumenCam()" style="margin-bottom:10px">
+      <option value="">— Seleccionar camión —</option>
+    </select>
+    <div class="resumen-box" id="res-cam">Selecciona un camión arriba.</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+      <button class="btn-sm" style="background:#25D366;color:white" onclick="copiar('res-cam')">Copiar</button>
+      <button class="btn-sm" style="background:var(--azul);color:white" onclick="abrirWA()">WhatsApp</button>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-title">Resumen general</div>
+    <div class="resumen-box" id="res-gen">—</div>
+    <button class="btn-sm" style="background:var(--azul2);color:white" onclick="copiar('res-gen')">Copiar resumen general</button>
+  </div>
+
+  <!-- jornada info hidden, handled by alertas system -->
+  <div id="jornada-info" style="display:none"></div>
+  <div style="margin:4px 12px 0;padding:14px;background:var(--azul);border-radius:var(--radio);color:white">
+    <div style="font-size:13px;opacity:.85;margin-bottom:8px">Cuando termines de asignar todos los camiones, finaliza para generar los números de asignación e imprimir las hojas de ruta.</div>
+    <button onclick="finalizarAsignaciones()" style="width:100%;padding:13px;border:none;border-radius:10px;background:white;color:var(--azul);font-size:16px;font-weight:700;cursor:pointer">
+      ✓ Finalizar asignaciones del día
+    </button>
+  </div>
+
+  <div id="finalizados-info" style="display:none">
+    <div class="sec-label">Hojas de ruta generadas</div>
+    <div class="card">
+      <div id="finalizados-list"></div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL -->
+<div class="modal-bg" id="modal-bg" onclick="bgClick(event)">
+  <div class="modal">
+    <div class="modal-title" id="modal-title"></div>
+    <div class="modal-sub"   id="modal-sub"></div>
+    <div id="modal-body"></div>
+    <div class="modal-cancel" onclick="cerrarModal()">Cancelar</div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+
+/* ── JSONBIN ── */
+const JKEY='$2a$10$q4eNs6WXxS3oXb25mIeINuoiZaCd69ruJI.IZhZGcstCRL4xDOPfu';
+const JBIN='69e249f336566621a8c3c97c';
+const JURL='https://api.jsonbin.io/v3/b/'+JBIN;
+
+async function leerBin(){
+  let r;
+  try{ r=await fetch(JURL+'/latest',{headers:{'X-Master-Key':JKEY}}); }
+  catch(e){ throw new Error('Sin conexión: '+e.message); }
+  if(r.status===401) throw new Error('API Key incorrecta (401)');
+  if(r.status===404) throw new Error('Bin ID no encontrado (404)');
+  if(!r.ok) throw new Error('Error HTTP '+r.status);
+  const j=await r.json();
+  if(!j.record) throw new Error('Bin vacío');
+  return j.record;
+}
+async function escribirBin(d){
+  const r=await fetch(JURL,{method:'PUT',
+    headers:{'Content-Type':'application/json','X-Master-Key':JKEY},
+    body:JSON.stringify(d)});
+  if(!r.ok) throw new Error('Error guardando: '+r.status);
+}
+
+/* ── JORNADA HELPERS ── */
+function hoy(){ const d=new Date(); const p=n=>String(n).padStart(2,'0'); return d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate()); }
+function fmtJornada(f){ if(!f)return'—'; const[y,m,d]=f.split('-'); const M=['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic']; return d+'/'+M[+m-1]+'/'+y; }
+function getJornada(bin,fecha){ return (bin.jornadas&&bin.jornadas[fecha])||{pedidos:{},asignaciones:{},cuadres:{}}; }
+function setJornada(bin,fecha,data){ if(!bin.jornadas) bin.jornadas={}; bin.jornadas[fecha]=data; }
+function listarJornadas(bin){ if(!bin.jornadas) return []; return Object.keys(bin.jornadas).sort().reverse(); }
+function limpiarJornadasViejas(bin,keepDays=45){
+  if(!bin.jornadas) return;
+  const cutoff=new Date(); cutoff.setDate(cutoff.getDate()-keepDays);
+  const cut=cutoff.toISOString().slice(0,10);
+  Object.keys(bin.jornadas).forEach(f=>{ if(f<cut) delete bin.jornadas[f]; });
+}
+
+/* ════════════════════════════════════════════════
+   NEW MODEL:
+   - subs  = ALL pending pedidos across ALL jornadas (flat, keyed by jornada+sid)
+   - asig  = { key: { camionId, fechaEntrega } }  ← now includes delivery date
+   - binCache = full bin record
+════════════════════════════════════════════════ */
+let allSubs = {};   // { 'YYYY-MM-DD__sid': { ...submission, jornadaPedido } }
+let asig    = {};   // { 'YYYY-MM-DD__sid__pi': { camionId, fechaEntrega } }
+let cams    = [];
+let binCache= {};
+let modalContext = null;  // { globalKey, pi, sid, jornadaPedido }
+
+/* ── INIT ── */
+window.addEventListener('DOMContentLoaded',()=>{
+  const h=new Date();
+  const M=['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+  document.getElementById('top-sub').textContent='Villar · '+h.getDate()+'/'+M[h.getMonth()]+'/'+h.getFullYear();
+  cargarDatos();
+});
+
+/* ── CARGAR DATOS ── */
+async function cargarDatos(){
+  const btn=document.getElementById('btn-refresh');
+  btn.textContent='⟳ ...';
+  try{
+    binCache=await leerBin();
+    cams=(binCache.camiones&&binCache.camiones.length)?binCache.camiones:defaultCams();
+    // Rebuild flat allSubs from ALL jornadas
+    allSubs={};
+    asig={};
+    if(binCache.jornadas){
+      Object.keys(binCache.jornadas).forEach(fecha=>{
+        const j=binCache.jornadas[fecha];
+        if(j.pedidos){
+          Object.keys(j.pedidos).forEach(sid=>{
+            const gk=fecha+'__'+sid;
+            allSubs[gk]={...j.pedidos[sid], jornadaPedido:fecha};
+          });
+        }
+        if(j.asignaciones){
+          Object.keys(j.asignaciones).forEach(k=>{
+            const gk=fecha+'__'+k;
+            asig[gk]=j.asignaciones[k];
+          });
+        }
+      });
+    }
+    // Legacy format: pedidos at root level (before jornadas patch)
+    if(binCache.pedidos && Object.keys(binCache.pedidos).length>0){
+      const legacyFecha=hoy(); // treat legacy as today
+      Object.keys(binCache.pedidos).forEach(sid=>{
+        const gk=legacyFecha+'__'+sid;
+        if(!allSubs[gk]){ // don't overwrite if already in jornadas
+          allSubs[gk]={...binCache.pedidos[sid], jornadaPedido:legacyFecha};
+        }
+      });
+      if(binCache.asignaciones){
+        Object.keys(binCache.asignaciones).forEach(k=>{
+          const gk=legacyFecha+'__'+k;
+          if(!asig[gk]) asig[gk]=binCache.asignaciones[k];
+        });
+      }
+    }
+  }catch(e){
+    showToast('Error: '+e.message); console.error(e);
+    if(!cams.length) cams=defaultCams();
+  }
+  btn.textContent='⟳ Actualizar';
+  renderAlertas();
+  renderPedidos();
+  actualizarStats();
+}
+
+/* ── GUARDAR ── */
+async function guardar(){
+  try{
+    limpiarJornadasViejas(binCache);
+    // Write asignaciones back grouped by jornadaPedido
+    // First clear all asignaciones in all jornadas
+    if(binCache.jornadas){
+      Object.keys(binCache.jornadas).forEach(f=>{
+        if(binCache.jornadas[f]) binCache.jornadas[f].asignaciones={};
+      });
+    }
+    // Write each asig entry to its jornada
+    Object.keys(asig).forEach(gk=>{
+      // gk = fecha__sid__pi
+      const parts=gk.split('__');
+      const fecha=parts[0];
+      const localKey=parts.slice(1).join('__'); // sid__pi
+      if(!binCache.jornadas) binCache.jornadas={};
+      if(!binCache.jornadas[fecha]) binCache.jornadas[fecha]={pedidos:{},asignaciones:{},cuadres:{}};
+      binCache.jornadas[fecha].asignaciones[localKey]=asig[gk];
+    });
+    binCache.camiones=cams;
+    await escribirBin(binCache);
+  }catch(e){showToast('Error al guardar: '+e.message);console.error(e);}
+}
+async function guardarCamiones(){ await guardar(); }
+async function guardarAsignaciones(){ await guardar(); }
+
+/* ── ALERTAS DE JORNADAS ANTERIORES ── */
+function renderAlertas(){
+  const cont=document.getElementById('alertas-anteriores');
+  if(!cont) return;
+  const todayStr=hoy();
+
+  // Gather all past jornadas that have unassigned clients
+  const pendientesPorFecha={};
+  Object.keys(allSubs).forEach(gk=>{
+    const s=allSubs[gk];
+    const fecha=s.jornadaPedido;
+    if(!fecha||fecha>=todayStr) return;
+    s.pedidos.forEach((_,pi)=>{
+      if(!asig[gk+'__'+pi]){
+        if(!pendientesPorFecha[fecha]) pendientesPorFecha[fecha]=0;
+        pendientesPorFecha[fecha]++;
+      }
+    });
+  });
+
+  const fechas=Object.keys(pendientesPorFecha).sort().reverse();
+  if(!fechas.length){ cont.innerHTML=''; return; }
+
+  cont.innerHTML=fechas.map(fecha=>`
+    <div style="margin:6px 12px;padding:10px 14px;border-radius:10px;background:#fef3c7;border-left:4px solid #f59e0b;display:flex;align-items:center;justify-content:space-between;gap:10px">
+      <div>
+        <div style="font-size:13px;font-weight:700;color:#92400e">⚠ ${fmtJornada(fecha)} — ${pendientesPorFecha[fecha]} cliente${pendientesPorFecha[fecha]>1?'s':''} sin asignar</div>
+        <div style="font-size:11px;color:#92400e;margin-top:2px">Pedidos de días anteriores pendientes de asignación</div>
+      </div>
+      <button onclick="filtrarJornada('${fecha}')"
+        style="flex-shrink:0;padding:7px 12px;background:#92400e;color:white;border:none;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer">
+        Ver pedidos
+      </button>
+    </div>`).join('');
+}
+
+/* ── FILTER BY JORNADA (from alert button) ── */
+let filtroJornada=null; // null = show all pending
+function filtrarJornada(fecha){
+  filtroJornada=fecha;
+  console.log('filtrarJornada:', fecha, 'allSubs keys:', Object.keys(allSubs).length, Object.keys(allSubs).slice(0,3));
+  renderPedidos();
+  // Scroll to prev-list
+  document.getElementById('prev-list')?.scrollIntoView({behavior:'smooth'});
+}
+function verTodos(){
+  filtroJornada=null;
+  renderPedidos();
+}
+
+/* ── STATS ── */
+function actualizarStats(){
+  let totCli=0, totCaj=0, sinAsig=0;
+  Object.keys(allSubs).forEach(gk=>{
+    const s=allSubs[gk];
+    totCaj+=s.totalCajas+s.totalPromo;
+    s.pedidos.forEach((_,pi)=>{
+      totCli++;
+      if(!asig[gk.replace(/^([^_]+__[^_]+)$/,'$1')+'__'+pi] && !asig[gk+'__'+pi]) sinAsig++;
+    });
+  });
+  // Recount properly
+  sinAsig=0; totCli=0;
+  Object.keys(allSubs).forEach(gk=>{
+    allSubs[gk].pedidos.forEach((_,pi)=>{
+      totCli++;
+      if(!asig[gk+'__'+pi]) sinAsig++;
+    });
+  });
+  document.getElementById('st-prev').textContent=Object.keys(allSubs).length;
+  document.getElementById('st-cli').textContent=totCli;
+  document.getElementById('st-caj').textContent=totCaj;
+  document.getElementById('st-sin').textContent=sinAsig;
+  const al=document.getElementById('alerta');
+  if(!totCli){al.style.display='none';}
+  else if(sinAsig){al.className='alert warn';al.style.display='block';al.textContent='⚠ '+sinAsig+' cliente'+(sinAsig>1?'s':'')+' sin camión asignado';}
+  else{al.className='alert ok';al.style.display='block';al.textContent='✓ Todos los clientes están asignados';}
+}
+
+function cargaCam(camId){
+  let t=0;
+  Object.keys(allSubs).forEach(gk=>{
+    allSubs[gk].pedidos.forEach((_,pi)=>{
+      const a=asig[gk+'__'+pi];
+      if(a&&a.camionId===camId) t+=_.cajas+_.promo;
+    });
+  });
+  return t;
+}
+
+/* ── TABS ── */
+function switchTab(name, el){
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('screen-'+name).classList.add('active');
+  if(name==='camiones'){ renderCamConfig(); renderCamDetalle(); }
+  if(name==='enviar'){ poblarSel(); genResumenCam(); genResumenGen(); renderFinalizados(); }
+}
+
+function defaultCams(){
+  return[1,2,3,4,5,6].map(n=>({id:'c'+n,nombre:'Camión '+n,chofer:'Chofer '+n,capacidad:0}));
+}
+
+function cargaCam(cid){
+  let t=0;
+  Object.keys(allSubs).forEach(gk=>{allSubs[gk].pedidos.forEach((p,i)=>{const _a=asig[gk+'__'+i];if(_a&&(_a.camionId===cid||_a===cid))t+=p.cajas+p.promo;});});
+  return t;
+}
+
+/* ── RENDER PEDIDOS ── */
+function renderPedidos(){
+  const cont=document.getElementById('prev-list');
+  // Determine which subs to show
+  let subsToShow={};
+  if(filtroJornada){
+    // Show only specific jornada
+    Object.keys(allSubs).forEach(gk=>{
+      if(gk.startsWith(filtroJornada+'__')) subsToShow[gk]=allSubs[gk];
+    });
+  } else {
+    // Show ALL unassigned + today's
+    const todayStr=hoy();
+    Object.keys(allSubs).forEach(gk=>{
+      const s=allSubs[gk];
+      // Include if from today OR has any unassigned client
+      const hasUnassigned=s.pedidos.some((_,pi)=>!asig[gk+'__'+pi]);
+      if(s.jornadaPedido===todayStr || hasUnassigned) subsToShow[gk]=s;
+    });
+  }
+
+  const ids=Object.keys(subsToShow);
+  let filterBanner='';
+  if(filtroJornada){
+    filterBanner=`<div style="margin:0 12px 6px;padding:8px 14px;background:var(--celeste);border-radius:10px;display:flex;align-items:center;justify-content:space-between">
+      <span style="font-size:13px;font-weight:700;color:var(--azul)">Filtrando: ${fmtJornada(filtroJornada)}</span>
+      <button onclick="verTodos()" style="padding:5px 12px;background:var(--azul);color:white;border:none;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer">Ver todos</button>
+    </div>`;
+  }
+
+  if(!ids.length){
+    cont.innerHTML=filterBanner+'<div style="text-align:center;padding:40px 20px;color:var(--muted);font-size:14px">No hay pedidos pendientes.<br><br>Los preventas deben presionar<br><strong>"Enviar pedido al encargado"</strong></div>';
+    return;
+  }
+
+  // Group by jornadaPedido for display
+  const byJornada={};
+  ids.forEach(gk=>{ const j=allSubs[gk].jornadaPedido; if(!byJornada[j]) byJornada[j]=[]; byJornada[j].push(gk); });
+  const jornadasOrdenadas=Object.keys(byJornada).sort().reverse();
+
+  cont.innerHTML=filterBanner+jornadasOrdenadas.map(fecha=>{
+    const isHoy=fecha===hoy();
+    const jornadaHeader=`<div style="margin:8px 12px 4px;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:${isHoy?'var(--verde)':'var(--ambar)'};display:flex;align-items:center;gap:6px">
+      <span>${isHoy?'📅':'⏰'} Jornada ${fmtJornada(fecha)}${isHoy?' (hoy)':' (anterior)'}</span>
+    </div>`;
+    const blocks=byJornada[fecha].map(gk=>{
+      const s=subsToShow[gk];
+      const sid=gk.slice(fecha.length+2); // remove "fecha__" prefix
+      const asigCount=s.pedidos.filter((_,pi)=>asig[gk+'__'+pi]).length;
+      const pct=s.pedidos.length?Math.round(asigCount/s.pedidos.length*100):0;
+      const statusColor=pct===100?'var(--verde)':asigCount?'var(--ambar)':'var(--rojo)';
+      const statusTxt=pct===100?'✓ Completo':asigCount?`${asigCount}/${s.pedidos.length}`:'Sin asignar';
+      const trucks=cams.map(cam=>{
+        const load=cargaCam(cam.id);
+        const cap=cam.capacidad||0;
+        const pctCap=cap?Math.min(Math.round(load/cap*100),100):null;
+        const bg=!cap?'var(--azul)':pctCap<80?'#166534':pctCap<100?'#78350f':'#7f1d1d';
+        return`<button class="truck-btn" style="background:${bg}" onclick="asignarTodos('${gk}','${cam.id}')">
+          <span class="ticon">🚛</span>
+          <span class="tname">${esc(cam.nombre)}</span>
+          ${cap?`<span class="tcap">${load}/${cap}cj</span>`:`<span class="tcap">${load}cj</span>`}
+        </button>`;
+      }).join('');
+      const rows=s.pedidos.map((p,pi)=>{
+        const a=asig[gk+'__'+pi];
+        const cam=cams.find(cc=>cc.id===(a&&a.camionId));
+        const entFecha=a&&a.fechaEntrega?a.fechaEntrega:'';
+        return`<div class="cli-row${cam?' has-asig':''}" onclick="abrirModal('${gk}',${pi})">
+          <div class="cli-check">${cam?'✓':''}</div>
+          <div class="cli-info">
+            <div class="cli-name">${esc(p.cliente)}</div>
+            <div class="cli-tags">
+              <span class="tag tag-v">V:${p.cajas}</span>
+              ${p.promo?`<span class="tag tag-p">P:${p.promo}</span>`:''}
+              ${p.credito?'<span class="tag tag-cred">Crédito</span>':''}
+              ${p.ncf?'<span class="tag tag-ncf">NCF</span>':''}
+            </div>
+          </div>
+          <div style="text-align:right;flex-shrink:0">
+            <span class="asig-lbl ${cam?'ok':'no'}">${cam?esc(cam.nombre):'Sin asignar'}</span>
+            ${entFecha?`<div style="font-size:10px;color:var(--muted);margin-top:2px">📅 ${fmtJornada(entFecha)}</div>`:''}
+          </div>
+        </div>`;
+      }).join('');
+      return`<div class="prev-block">
+        <div class="prev-head" onclick="togglePrev('pbody-${gk.replace(/\W/g,'_')}','pchev-${gk.replace(/\W/g,'_')}')">
+          <div class="prev-head-info">
+            <div class="prev-head-name">${esc(s.vendedor)} — ${esc(s.zona)}</div>
+            <div class="prev-head-meta">${s.pedidos.length} clientes · ${s.totalCajas}V+${s.totalPromo}P · $${fmt(s.totalDinero)}</div>
+          </div>
+          <span style="font-size:12px;font-weight:700;color:${statusColor};flex-shrink:0">${statusTxt}</span>
+          <span class="prev-chevron" id="pchev-${gk.replace(/\W/g,'_')}">›</span>
+        </div>
+        <div class="prev-body" id="pbody-${gk.replace(/\W/g,'_')}">
+          <div style="font-size:11px;color:var(--muted);padding:8px 0 2px;font-weight:600">Asignar toda la ruta a un camión:</div>
+          <div class="truck-bar">${trucks}</div>
+          <div style="font-size:11px;color:var(--muted);padding:4px 0;font-weight:600">O toca un cliente para asignar individualmente:</div>
+          ${rows}
+        </div>
+      </div>`;
+    }).join('');
+    return jornadaHeader+blocks;
+  }).join('');
+}
+
+function togglePrev(bodyId,chevId){
+  const b=document.getElementById(bodyId);
+  const c=document.getElementById(chevId);
+  if(b){const o=b.classList.toggle('open');if(c)c.classList.toggle('open',o);}
+}
+
+function actualizarStats(){
+  let totCli=0,totCaj=0,sinAsig=0;
+  Object.keys(subs).forEach(gk=>{
+    const s=allSubs[gk];totCaj+=s.totalCajas+s.totalPromo;
+    s.pedidos.forEach((_,i)=>{totCli++;if(!asig[sid+'__'+i])sinAsig++;});
+  });
+  document.getElementById('st-prev').textContent=Object.keys(subs).length;
+  document.getElementById('st-cli').textContent=totCli;
+  document.getElementById('st-caj').textContent=totCaj;
+  document.getElementById('st-sin').textContent=sinAsig;
+  const al=document.getElementById('alerta');
+  if(!totCli){al.style.display='none';}
+  else if(sinAsig){al.className='alert warn';al.style.display='block';al.textContent=`⚠ ${sinAsig} cliente${sinAsig>1?'s':''} sin camión asignado`;}
+  else{al.className='alert ok';al.style.display='block';al.textContent='✓ Todos los clientes están asignados';}
+}
+
+/* ── ASIGNAR TODOS (truck btn) ── */
+async function asignarTodos(gk,camId){
+  // Ask for delivery date
+  const fechaEntrega=prompt('Fecha de entrega para esta ruta (YYYY-MM-DD):',hoy());
+  if(!fechaEntrega) return;
+  allSubs[gk].pedidos.forEach((_,pi)=>{ asig[gk+'__'+pi]={camionId:camId,fechaEntrega}; });
+  await guardar();
+  renderAlertas(); renderPedidos(); actualizarStats();
+  showToast(`${allSubs[gk].pedidos.length} clientes → ${cams.find(c=>c.id===camId)?.nombre} · ${fmtJornada(fechaEntrega)} ✓`);
+}
+
+/* ── MODAL CLIENTE ── */
+function abrirModal(gk,pi){
+  modalContext={gk,pi};
+  const s=allSubs[gk];
+  const p=s.pedidos[pi];
+  const existing=asig[gk+'__'+pi]||{};
+  document.getElementById('modal-title').textContent=esc(p.cliente);
+  document.getElementById('modal-sub').textContent=`${p.cajas} cajas${p.promo?'+'+p.promo+' prom':''} · $${fmt(p.total)} · Pedido: ${fmtJornada(s.jornadaPedido)}`;
+  const actual=existing.camionId||'';
+  const entFecha=existing.fechaEntrega||hoy();
+  document.getElementById('modal-body').innerHTML=
+    `<div style="margin-bottom:10px;padding:8px 12px;background:var(--celeste);border-radius:8px">
+      <label style="font-size:12px;font-weight:700;color:var(--azul);display:block;margin-bottom:4px">📅 Fecha de entrega</label>
+      <input type="date" id="modal-fecha-entrega" value="${entFecha}"
+        style="font-size:15px;padding:7px 12px;border:1.5px solid var(--borde);border-radius:8px;width:100%">
+    </div>`+
+    `<div class="mcam-btn${actual===''?' sel':''}" onclick="asignarCliente('')">
+      <span class="mcam-icon" style="font-size:20px">✕</span>
+      <div class="mcam-info"><div class="mcam-name" style="color:var(--rojo)">Quitar asignación</div></div>
+    </div>`+
+    cams.map(cam=>{
+      const load=cargaCam(cam.id);
+      const cap=cam.capacidad||0;
+      const isSel=cam.id===actual;
+      const det=cap?`${cam.chofer} · ${load}/${cap}cj${load>cap?' ⚠':''}`:`${cam.chofer}${load?' · '+load+' cj':''}`;
+      return`<div class="mcam-btn${isSel?' sel':''}" onclick="asignarCliente('${cam.id}')">
+        <span class="mcam-icon">🚛</span>
+        <div class="mcam-info">
+          <div class="mcam-name">${esc(cam.nombre)}</div>
+          <div class="mcam-det">${det}</div>
+        </div>
+        ${isSel?'<span style="color:var(--azul2);font-size:20px">✓</span>':''}
+      </div>`;
+    }).join('');
+  document.getElementById('modal-bg').classList.add('open');
+}
+
+async function asignarCliente(camId){
+  if(!modalContext) return;
+  const {gk,pi}=modalContext;
+  const key=gk+'__'+pi;
+  if(camId){
+    const fechaEl=document.getElementById('modal-fecha-entrega');
+    const fechaEntrega=fechaEl?fechaEl.value:hoy();
+    asig[key]={camionId:camId,fechaEntrega};
+  } else {
+    delete asig[key];
+  }
+  await guardar();
+  cerrarModal();
+  renderAlertas(); renderPedidos(); actualizarStats();
+  showToast(camId?'Asignado ✓':'Quitado de camión');
+}
+
+function bgClick(e){if(e.target===document.getElementById('modal-bg'))cerrarModal();}
+function cerrarModal(){document.getElementById('modal-bg').classList.remove('open');}
+
+/* ── PEDIDO MANUAL ── */
+async function agregarManual(){
+  const zona=document.getElementById('m-zona').value.trim();
+  const vend=document.getElementById('m-vend').value.trim()||'Manual';
+  const cli=document.getElementById('m-cli').value.trim();
+  const caj=parseInt(document.getElementById('m-caj').value)||0;
+  const pro=parseInt(document.getElementById('m-pro').value)||0;
+  const pre=parseInt(document.getElementById('m-pre').value)||0;
+  if(!cli){showToast('Escribe el nombre del cliente');return;}
+  if(!caj&&!pro){showToast('Ingresa cajas o promoción');return;}
+  if(!zona) showToast('Sin zona — se agregará como Manual');
+  const p={id:Date.now(),cliente:cli,cajas:caj,promo:pro,precio:pre,total:caj*pre,credito:false,ncf:false,rnc:'',nota:''};
+  const ek=Object.keys(allSubs).find(k=>allSubs[k].zona===zona&&allSubs[k].vendedor===vend);
+  if(ek){allSubs[ek].pedidos.push(p);allSubs[ek].totalCajas+=caj;allSubs[ek].totalPromo+=pro;allSubs[ek].totalDinero+=p.total;}
+  else{const jornadaKey=hoy()+'__manual_'+Date.now();allSubs[jornadaKey]={id:jornadaKey,vendedor:vend,zona:zona||'Manual',fecha:new Date().toISOString().slice(0,10),enviado:new Date().toISOString(),pedidos:[p],totalCajas:caj,totalPromo:pro,totalDinero:p.total,asignado:false,jornadaPedido:hoy()};}
+  await guardar();
+  ['m-zona','m-vend','m-cli','m-caj','m-pro'].forEach(id=>{document.getElementById(id).value='';});
+  renderPedidos();actualizarStats();showToast('Cliente agregado ✓');
+}
+
+/* ── CAMIONES CONFIG ── */
+function renderCamConfig(){
+  document.getElementById('cam-config').innerHTML=cams.map((cam,i)=>{
+    const load=cargaCam(cam.id);
+    const cap=cam.capacidad||0;
+    const pct=cap?Math.min(Math.round(load/cap*100),100):0;
+    const over=cap&&load>cap;
+    const fc=!cap?'':pct<80?'cap-ok':pct<100?'cap-warn':'cap-over';
+    const barH=cap?`<div class="cap-bar-bg"><div class="cap-bar-fill ${fc}" style="width:${pct}%"></div></div>
+      <div class="cap-text"><span>${load}/${cap} cajas</span>${over?`<span class="cap-over-txt">⚠ +${load-cap} · ${Math.ceil(load/cap)} viajes</span>`:`<span>${100-pct}% libre</span>`}</div>`
+      :(load?`<div style="font-size:11px;color:var(--muted);margin-top:4px">${load} cajas asignadas</div>`:'');
+    const pillCls=over?'over':cap&&pct>=80?'warn':'';
+    return`<div class="camion-card">
+      <div class="cam-head" onclick="toggleCam('cfg-${cam.id}')">
+        <div class="cam-head-info">
+          <div class="cam-name">🚛 ${esc(cam.nombre)}</div>
+          <div class="cam-chofer">${esc(cam.chofer)}</div>
+          ${barH}
+        </div>
+        <div class="cam-pills">
+          <span class="pill ${pillCls}">${load}cj</span>
+          <span style="color:var(--muted);font-size:18px">›</span>
+        </div>
+      </div>
+      <div class="cam-body" id="cfg-${cam.id}">
+        <div class="cam-cfg">
+          <input type="text" value="${esc(cam.nombre)}" placeholder="Nombre del camión" onchange="updCam(${i},'nombre',this.value)">
+          <input type="text" value="${esc(cam.chofer)}" placeholder="Nombre del responsable" onchange="updCam(${i},'chofer',this.value)">
+          <input type="number" value="${cam.capacidad||''}" placeholder="Capacidad máx. en cajas (opcional)" min="0" inputmode="numeric" onchange="updCam(${i},'capacidad',+this.value)">
+        </div>
+        <button onclick="elimCam(${i})" style="margin-top:8px;width:100%;background:var(--rojo-bg);color:var(--rojo);border:none;border-radius:8px;padding:8px;font-size:13px;font-weight:600;cursor:pointer">Eliminar camión</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function toggleCam(id){document.getElementById(id)?.classList.toggle('open');}
+
+async function updCam(i,f,v){cams[i][f]=v;await guardar();renderCamConfig();renderPedidos();}
+async function agregarCamion(){
+  cams.push({id:'c'+Date.now(),nombre:'Camión '+(cams.length+1),chofer:'Chofer '+(cams.length+1),capacidad:0});
+  await guardar();renderCamConfig();renderPedidos();
+}
+async function elimCam(i){
+  if(!confirm('¿Eliminar '+cams[i].nombre+'?'))return;
+  const cid=cams[i].id;cams.splice(i,1);
+  Object.keys(asig).forEach(k=>{if(asig[k]===cid)delete asig[k];});
+  await guardar();renderCamConfig();renderCamDetalle();renderPedidos();actualizarStats();
+}
+
+/* ── CAMIONES DETALLE ── */
+function renderCamDetalle(){
+  document.getElementById('cam-detalle').innerHTML=cams.map(cam=>{
+    const items=[];
+    Object.keys(allSubs).forEach(gk=>{
+      allSubs[gk].pedidos.forEach((p,i)=>{
+        const a=asig[gk+'__'+i];
+        if(a&&a.camionId===cam.id){
+          items.push({gk,i,p,zona:allSubs[gk].zona,
+            jornadaPedido:allSubs[gk].jornadaPedido,
+            fechaEntrega:a.fechaEntrega});
+        }
+      });
+    });
+    const totC=items.reduce((a,x)=>a+x.p.cajas,0);
+    const totP=items.reduce((a,x)=>a+x.p.promo,0);
+    const totD=items.reduce((a,x)=>a+x.p.total,0);
+    const zonas=[...new Set(items.map(x=>x.zona))].join(', ');
+    // Group by fechaEntrega
+    const byFecha={};
+    items.forEach(x=>{ const f=x.fechaEntrega||'Sin fecha'; if(!byFecha[f]) byFecha[f]=[]; byFecha[f].push(x); });
+    const rows=items.length
+      ?Object.keys(byFecha).sort().map(f=>`
+        <div style="font-size:10px;font-weight:700;color:var(--azul);padding:4px 0 2px;text-transform:uppercase;letter-spacing:.5px">📅 Entrega ${fmtJornada(f)}</div>`+
+        byFecha[f].map(({gk,i,p,zona})=>`<div class="cam-cli">
+          <div class="cam-cli-info">
+            <div class="cam-cli-name">${esc(p.cliente)}</div>
+            <div class="cam-cli-det">${esc(zona)} · V:${p.cajas}${p.promo?'+P'+p.promo:''} · $${fmt(p.total)}</div>
+          </div>
+          <button class="btn-x" onclick="quitarCli('${gk}',${i})">×</button>
+        </div>`).join('')
+      ).join('')
+      :'<div class="cam-empty">Sin clientes asignados</div>';
+    return`<div class="camion-card">
+      <div class="cam-head" onclick="toggleCam('det-${cam.id}')">
+        <div class="cam-head-info">
+          <div class="cam-name">🚛 ${esc(cam.nombre)}</div>
+          <div class="cam-chofer">${esc(cam.chofer)}${zonas?' · '+zonas:''}</div>
+        </div>
+        <div class="cam-pills">
+          <span class="pill">${items.length}cl</span>
+          <span class="pill">${totC+totP}cj</span>
+        </div>
+      </div>
+      <div class="cam-body" id="det-${cam.id}">
+        ${rows}
+        ${items.length?`<div style="font-size:11px;color:var(--muted);padding:8px 0 0;border-top:1px solid var(--gris2);margin-top:4px">Venta:${totC} · Prom:${totP} · $${fmt(totD)}</div>`:''}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+async function quitarCli(gk,i){
+  delete asig[gk+'__'+i];await guardar();
+  renderCamDetalle();renderCamConfig();renderPedidos();actualizarStats();
+  showToast('Cliente quitado del camión');
+}
+
+/* ── ENVIAR ── */
+function poblarSel(){
+  document.getElementById('sel-cam').innerHTML='<option value="">— Seleccionar camión —</option>'+
+    cams.map(c=>`<option value="${c.id}">${c.nombre} – ${c.chofer}</option>`).join('');
+}
+function genResumenCam(){
+  const cid=document.getElementById('sel-cam').value;
+  const out=document.getElementById('res-cam');
+  if(!cid){out.textContent='Selecciona un camión arriba.';return;}
+  const cam=cams.find(c=>c.id===cid);
+  const items=[];
+  Object.keys(allSubs).forEach(gk=>{allSubs[gk].pedidos.forEach((p,i)=>{const _a=asig[gk+'__'+i];if(_a&&(_a.camionId===cid||_a===cid))items.push({p,zona:allSubs[gk].zona});});});
+  if(!items.length){out.textContent='Sin clientes asignados.';return;}
+  const zonas=[...new Set(items.map(x=>x.zona))].join('+');
+  const tot=items.reduce((a,x)=>a+x.p.cajas+x.p.promo,0);
+  let txt=`@${cam.chofer}\n${zonas}\nMas\n`;
+  items.forEach(({p})=>{
+    let l=`${p.cajas}${p.promo?'+'+p.promo:''} ${p.cliente}`;
+    if(p.ncf)l+=' (Factura)';if(p.credito)l+=' (Crédito autorizado)';if(p.nota)l+=' ('+p.nota+')';
+    txt+=l+'\n';
+  });
+  txt+=`Total ${tot}`;
+  out.textContent=txt;
+}
+function genResumenGen(){
+  let txt='';let sin=0;
+  cams.forEach(cam=>{
+    const items=[];
+    Object.keys(allSubs).forEach(gk=>{allSubs[gk].pedidos.forEach((p,i)=>{const a=asig[gk+'__'+i];if(a&&a.camionId===cam.id)items.push({p,zona:allSubs[gk].zona});});});
+    if(!items.length)return;
+    const tot=items.reduce((a,x)=>a+x.p.cajas+x.p.promo,0);
+    const cap=cam.capacidad||0;
+    const zonas=[...new Set(items.map(x=>x.zona))].join('+');
+    const capS=cap?` · ${tot}/${cap}cj${tot>cap?' ⚠ '+Math.ceil(tot/cap)+' viajes':''}`:` · ${tot}cj`;
+    txt+=`${cam.nombre} (${cam.chofer})${capS} · ${zonas}\n`;
+  });
+  Object.keys(allSubs).forEach(gk=>{allSubs[gk].pedidos.forEach((_,i)=>{if(!asig[gk+'__'+i])sin++;});});
+  if(sin)txt+=`\n⚠ SIN ASIGNAR: ${sin} cliente${sin>1?'s':''}`;
+  document.getElementById('res-gen').textContent=txt||'—';
+}
+function copiar(id){
+  const t=document.getElementById(id).textContent;
+  if(navigator.clipboard)navigator.clipboard.writeText(t).then(()=>showToast('Copiado ✓'));
+  else{const x=document.createElement('textarea');x.value=t;x.style.position='fixed';x.style.opacity='0';document.body.appendChild(x);x.select();document.execCommand('copy');document.body.removeChild(x);showToast('Copiado ✓');}
+}
+function abrirWA(){window.open('https://wa.me/?text='+encodeURIComponent(document.getElementById('res-cam').textContent),'_blank');}
+
+function fmt(n){return Number(n).toLocaleString('es-DO');}
+function esc(s){if(!s)return'';const d=document.createElement('div');d.textContent=s;return d.innerHTML;}
+function showToast(m){const t=document.getElementById('toast');t.textContent=m;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2500);}
+
+/* ── NÚMERO DE ASIGNACIÓN ── */
+function generarNumAsig(camNombre, fecha){
+  // C1-20260417 format — extract camion number
+  const match = camNombre.match(/\d+/);
+  const num = match ? match[0].padStart(2,'0') : '00';
+  const d = fecha ? fecha.replace(/-/g,'') : new Date().toISOString().slice(0,10).replace(/-/g,'');
+  return 'C'+num+'-'+d;
+}
+
+function fechaHoy(){
+  const h=new Date();
+  const pad=n=>String(n).padStart(2,'0');
+  return h.getFullYear()+'-'+pad(h.getMonth()+1)+'-'+pad(h.getDate());
+}
+
+async function finalizarAsignaciones(){
+  // Generate assignment IDs for each camion that has clients
+  const fecha = fechaHoy();
+  let alguno = false;
+  cams.forEach(cam=>{
+    const items=[];
+    Object.keys(allSubs).forEach(gk=>{
+      allSubs[gk].pedidos.forEach((p,i)=>{const _a=asig[gk+'__'+i];if(_a&&(_a.camionId===cam.id||_a===cam.id))items.push(true);});
+    });
+    if(items.length){
+      cam.asignacionId = generarNumAsig(cam.nombre, fecha);
+      cam.fechaAsignacion = fecha;
+      cam.fechaAsignacion = fecha;
+      alguno = true;
+    }
+  });
+  if(!alguno){showToast('No hay clientes asignados aún');return;}
+  await guardar();
+  genResumenGen();
+  showToast('Asignaciones finalizadas ✓');
+  document.getElementById('finalizados-info').style.display='block';
+  renderFinalizados();
+}
+
+function renderFinalizados(){
+  const cont = document.getElementById('finalizados-list');
+  const fecha = fechaHoy();
+  let html = '';
+  cams.forEach(cam=>{
+    if(!cam.asignacionId) return;
+    const items=[];
+    Object.keys(allSubs).forEach(gk=>{
+      allSubs[gk].pedidos.forEach((p,i)=>{const _a=asig[gk+'__'+i];if(_a&&(_a.camionId===cam.id||_a===cam.id))items.push({p,zona:allSubs[gk].zona});});
+    });
+    if(!items.length) return;
+    const tot=items.reduce((a,x)=>a+x.p.cajas+x.p.promo,0);
+    html+=`<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--gris2)">
+      <div>
+        <div style="font-size:15px;font-weight:700;color:var(--azul)">🚛 ${esc(cam.nombre)}</div>
+        <div style="font-size:12px;color:var(--muted)">${esc(cam.chofer)} · ${items.length} clientes · ${tot} cajas</div>
+        <div style="font-size:13px;font-weight:700;color:var(--verde);margin-top:3px;font-family:monospace"># ${cam.asignacionId}</div>
+      </div>
+      <button onclick="imprimirCamion('${cam.id}')"
+        style="background:var(--azul);color:white;border:none;border-radius:10px;padding:10px 14px;font-size:13px;font-weight:700;cursor:pointer">
+        🖨 Imprimir
+      </button>
+    </div>`;
+  });
+  cont.innerHTML = html || '<div style="color:var(--muted);font-size:13px;text-align:center;padding:10px">Presiona "Finalizar asignaciones" arriba</div>';
+}
+
+function imprimirCamion(camId){
+  const cam=cams.find(c=>c.id===camId);
+  if(!cam){showToast('Camión no encontrado');return;}
+  const items=[];
+  Object.keys(allSubs).forEach(gk=>{
+    allSubs[gk].pedidos.forEach((p,i)=>{
+      const a=asig[gk+'__'+i]; if(a&&a.camionId===camId) items.push({p,zona:allSubs[gk].zona});
+    });
+  });
+  if(!items.length){showToast('Sin clientes asignados');return;}
+
+  const totV=items.reduce((a,x)=>a+x.p.cajas,0);
+  const totP=items.reduce((a,x)=>a+x.p.promo,0);
+  const totD=items.reduce((a,x)=>a+x.p.total,0);
+  const totC=totV+totP;
+  const zonas=[...new Set(items.map(x=>x.zona))].join(', ');
+  const fecha=cam.fechaAsignacion||fechaHoy();
+  const [fy,fm,fd]=fecha.split('-');
+  const M=['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+  const fechaStr=fd+'/'+M[+fm-1]+'/'+fy;
+  const numAsig=cam.asignacionId||generarNumAsig(cam.nombre,fecha);
+
+  const filas=items.map((x,i)=>{
+    const {p}=x;
+    const badges=(p.credito?'<b style="color:#166534;font-size:7pt">CR</b> ':'')+
+                 (p.ncf?'<b style="color:#4c1d95;font-size:7pt">NCF</b>':'');
+    const sub=(badges?'<br>'+badges:'')+(p.nota?'<br><span style="color:#64748b;font-size:7pt">'+p.nota+'</span>':'');
+    return '<tr>'
+      +'<td>'+(i+1)+'</td>'
+      +'<td>'+p.cliente+sub+'</td>'
+      +'<td>'+p.cajas+'</td>'
+      +'<td>'+(p.promo||'')+'</td>'
+      +'<td>$'+p.precio+'</td>'
+      +'<td>$'+fmt(p.total)+'</td>'
+      +'<td></td><td></td>'
+      +'</tr>';
+  }).join('');
+
+  const S='<style>'
+    +'*{box-sizing:border-box;margin:0;padding:0}'
+    +'body{font-family:Arial,Helvetica,sans-serif;font-size:8pt;color:#1e293b}'
+    +'.w{padding:4mm 5mm}'
+    +'.hdr{display:flex;align-items:flex-start;justify-content:space-between;border-bottom:2.5px solid #0a3d6b;padding-bottom:4px;margin-bottom:5px}'
+    +'.brand{display:flex;align-items:center;gap:5px}'
+    +'.drop{font-size:20pt;line-height:1}'
+    +'.co{font-size:11pt;font-weight:900;color:#0a3d6b;letter-spacing:-.3px;line-height:1.15}'
+    +'.co-sub{font-size:7pt;color:#64748b;font-weight:700;text-transform:uppercase;letter-spacing:.5px}'
+    +'.an{text-align:right}.anl{font-size:6.5pt;color:#64748b;text-transform:uppercase;letter-spacing:.5px}'
+    +'.anum{font-size:16pt;font-weight:900;color:#0a3d6b;font-family:monospace;line-height:1}'
+    +'.meta{display:grid;grid-template-columns:repeat(5,1fr);gap:3px;margin-bottom:4px}'
+    +'.mb{background:#f1f5f9;border-radius:3px;padding:3px 5px}'
+    +'.ml{font-size:6.5pt;text-transform:uppercase;color:#64748b;font-weight:700}'
+    +'.mv{font-size:9.5pt;font-weight:700;color:#0a3d6b}'
+    +'table{width:100%;border-collapse:collapse}'
+    +'thead tr{background:#0a3d6b;color:#fff;-webkit-print-color-adjust:exact;print-color-adjust:exact}'
+    +'thead th{padding:3.5px 4px;font-size:7pt;font-weight:700;text-transform:uppercase;text-align:center;white-space:nowrap}'
+    +'thead th:nth-child(2){text-align:left}'
+    +'tbody tr:nth-child(even){background:#f8fafc;-webkit-print-color-adjust:exact;print-color-adjust:exact}'
+    +'tbody td{padding:2.5px 4px;border-bottom:.5px solid #e2e8f0;vertical-align:top;font-size:8pt}'
+    +'tbody td:nth-child(2){max-width:130px}'
+    +'tbody td:nth-child(7){border:1px solid #cbd5e1;min-width:28px}'
+    +'tbody td:nth-child(8){border-bottom:1px solid #e2e8f0;min-width:50px}'
+    +'tfoot tr{background:#0a3d6b;color:#fff;-webkit-print-color-adjust:exact;print-color-adjust:exact}'
+    +'tfoot td{padding:3.5px 4px;font-weight:700;font-size:8pt;text-align:center}'
+    +'tfoot td:nth-child(2){text-align:left}'
+    +'.bot{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:5px;border-top:2px solid #0a3d6b;padding-top:5px}'
+    +'.cb{border:1px solid #cbd5e1;border-radius:4px;padding:5px 7px}'
+    +'.ct{font-size:7.5pt;font-weight:700;text-transform:uppercase;color:#0a3d6b;margin-bottom:3px}'
+    +'.cr{display:flex;justify-content:space-between;font-size:7.5pt;padding:2px 0;border-bottom:.5px dashed #e2e8f0}'
+    +'.cr:last-child{border:none}'
+    +'.cf{border-bottom:1px solid #94a3b8;display:inline-block;min-width:65px;height:13px}'
+    +'.cfb{font-weight:700}'
+    +'.fi{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-top:5px}'
+    +'.fl{border-bottom:1.5px solid #0a3d6b;height:22px;margin-bottom:2px}'
+    +'.fll{font-size:6.5pt;text-transform:uppercase;color:#64748b;text-align:center;font-weight:700}'
+    +'@media print{body{margin:0}@page{margin:4mm;size:letter portrait}}'
+    +'</style>';
+
+  const html='<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><title>Ruta '+numAsig+'</title>'+S+'</head>'
+    +'<body><div class="w">'
+    +'<div class="hdr">'
+    +'<div class="brand"><div class="drop">💧</div>'
+    +'<div><div class="co">Villar &amp; Villar Logistics</div>'
+    +'<div class="co-sub">Hoja de Ruta · Uso del Conductor</div></div></div>'
+    +'<div class="an"><div class="anl">N° Asignación</div><div class="anum">'+numAsig+'</div></div>'
+    +'</div>'
+    +'<div class="meta">'
+    +'<div class="mb"><div class="ml">Camión</div><div class="mv">'+esc(cam.nombre)+'</div></div>'
+    +'<div class="mb"><div class="ml">Responsable</div><div class="mv">'+esc(cam.chofer)+'</div></div>'
+    +'<div class="mb"><div class="ml">Fecha</div><div class="mv">'+fechaStr+'</div></div>'
+    +'<div class="mb"><div class="ml">Zonas</div><div class="mv" style="font-size:7.5pt">'+zonas+'</div></div>'
+    +'<div class="mb"><div class="ml">Total cajas</div><div class="mv" style="color:#166534">'+totC+'</div></div>'
+    +'</div>'
+    +'<table>'
+    +'<thead><tr>'
+    +'<th style="width:16px">#</th>'
+    +'<th style="text-align:left">Cliente</th>'
+    +'<th>V.Prev</th><th>Prom</th><th>$/cj</th><th>Total $</th>'
+    +'<th>Entregó</th><th>Observación</th>'
+    +'</tr></thead>'
+    +'<tbody>'+filas+'</tbody>'
+    +'<tfoot><tr><td colspan="2">TOTALES</td><td>'+totV+'</td><td>'+totP+'</td><td>—</td>'
+    +'<td style="text-align:right">$'+fmt(totD)+'</td><td colspan="2"></td></tr></tfoot>'
+    +'</table>'
+    +'<div class="bot">'
+    +'<div class="cb"><div class="ct">📦 Cuadre de Cajas</div>'
+    +'<div class="cr"><span>Sobrante día anterior en camión</span><span class="cf"></span></div>'
+    +'<div class="cr"><span>+ Cajas cargadas hoy</span><span class="cf"></span></div>'
+    +'<div class="cr cfb"><span>= Total disponible</span><span class="cf"></span></div>'
+    +'<div class="cr"><span>Cajas vendidas (V)</span><span>'+totV+'</span></div>'
+    +'<div class="cr"><span>Promoción entregada (P)</span><span>'+totP+'</span></div>'
+    +'<div class="cr cfb"><span>Total entregado</span><span>'+totC+'</span></div>'
+    +'<div class="cr"><span>Sobrante físico (regreso)</span><span class="cf"></span></div>'
+    +'<div class="cr cfb"><span>Diferencia cajas</span><span class="cf"></span></div>'
+    +'</div>'
+    +'<div class="cb"><div class="ct">💵 Cuadre de Efectivo</div>'
+    +'<div class="cr cfb"><span>Total facturado</span><span>$'+fmt(totD)+'</span></div>'
+    +'<div class="cr"><span>Efectivo cobrado</span><span class="cf"></span></div>'
+    +'<div class="cr"><span>Transferencias</span><span class="cf"></span></div>'
+    +'<div class="cr"><span>Créditos / Pendientes</span><span class="cf"></span></div>'
+    +'<div class="cr"><span>— Pago ayudante</span><span class="cf"></span></div>'
+    +'<div class="cr"><span>— Combustible</span><span class="cf"></span></div>'
+    +'<div class="cr"><span>— Peaje / Otros</span><span class="cf"></span></div>'
+    +'<div class="cr cfb"><span>Total a entregar a caja</span><span class="cf"></span></div>'
+    +'</div>'
+    +'</div>'
+    +'<div class="fi">'
+    +'<div><div class="fl"></div><div class="fll">Responsable / Firma</div></div>'
+    +'<div><div class="fl"></div><div class="fll">Supervisor / Revisó</div></div>'
+    +'<div><div class="fl"></div><div class="fll">Caja / Recibió $</div></div>'
+    +'</div>'
+    +'</div>'
+    +'<scr'+'ipt>window.onload=()=>window.print();<\/scr'+'ipt>'
+    +'</body></html>';
+
+  const w=window.open('','_blank');
+  w.document.write(html);
+  w.document.close();
+}
+
+
+</script>
+<div id="app-version">Asignacion v1.20260420</div>
+</body>
+</html>

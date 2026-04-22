@@ -1,0 +1,1235 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#0a3d6b">
+<title>Cuadre de Camiones – Villar Agua</title>
+<style>
+:root{
+  --azul:#0a3d6b;--azul2:#1565c0;--celeste:#dbeafe;
+  --verde:#166534;--verde-bg:#dcfce7;
+  --rojo:#991b1b;--rojo-bg:#fee2e2;
+  --ambar:#92400e;--ambar-bg:#fef3c7;
+  --gris:#f8fafc;--gris2:#e2e8f0;
+  --texto:#1e293b;--muted:#64748b;--borde:#cbd5e1;--blanco:#fff;--radio:12px;
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#e8f0fe;color:var(--texto);min-height:100vh;font-size:15px}
+.topbar{background:var(--azul);color:white;padding:12px 16px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:200}
+.topbar-title{font-size:17px;font-weight:700}
+.topbar-sub{font-size:11px;opacity:.7;margin-top:1px}
+.screen{display:none}.screen.active{display:block;padding-bottom:40px}
+.card{background:var(--blanco);border-radius:var(--radio);box-shadow:0 1px 4px rgba(0,0,0,.1);margin:10px 12px;padding:14px}
+.card-title{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--muted);margin-bottom:10px}
+.sec-label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--muted);padding:10px 12px 4px}
+/* Camion cards on dashboard */
+.cam-card{background:var(--blanco);border-radius:var(--radio);box-shadow:0 1px 4px rgba(0,0,0,.1);margin:8px 12px;overflow:hidden;cursor:pointer;transition:box-shadow .15s}
+.cam-card:active{box-shadow:0 2px 12px rgba(10,61,107,.25)}
+.cam-card-head{padding:14px;display:flex;align-items:center;gap:12px}
+.cam-icon{font-size:28px;flex-shrink:0}
+.cam-info{flex:1;min-width:0}
+.cam-name{font-size:16px;font-weight:700;color:var(--azul)}
+.cam-chofer{font-size:13px;color:var(--muted);margin-top:2px}
+.cam-id{font-size:12px;font-weight:700;font-family:monospace;color:var(--azul2);margin-top:3px;background:var(--celeste);display:inline-block;padding:2px 8px;border-radius:6px}
+.cam-stats{text-align:right;flex-shrink:0}
+.cam-stat-big{font-size:20px;font-weight:700;color:var(--azul)}
+.cam-stat-sub{font-size:11px;color:var(--muted)}
+.status-badge{display:inline-block;font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;margin-top:4px}
+.badge-pending{background:var(--ambar-bg);color:var(--ambar)}
+.badge-done{background:var(--verde-bg);color:var(--verde)}
+.badge-diff{background:var(--rojo-bg);color:var(--rojo)}
+/* Cuadre screen */
+.cuadre-header{background:var(--azul);color:white;padding:12px 16px;display:flex;align-items:center;gap:10px}
+.back-btn{background:none;border:none;color:white;font-size:22px;cursor:pointer;padding:0;line-height:1;flex-shrink:0}
+.cuadre-title{font-size:16px;font-weight:700}
+.cuadre-sub{font-size:12px;opacity:.75;margin-top:2px}
+/* Cliente rows in cuadre */
+.cli-cuadre{background:var(--blanco);border-radius:10px;margin:6px 12px;padding:12px;box-shadow:0 1px 3px rgba(0,0,0,.08)}
+.cli-cuadre.diferencia{border-left:4px solid var(--rojo)}
+.cli-cuadre.ok{border-left:4px solid var(--verde)}
+.cli-cuadre.credito{border-left:4px solid var(--azul2)}
+.cli-top{display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:8px}
+.cli-nombre{font-size:14px;font-weight:700}
+.cli-zona{font-size:11px;color:var(--muted);margin-top:1px}
+.cli-prev{font-size:12px;color:var(--muted)}
+.cli-campos{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:6px}
+.campo-group{display:flex;flex-direction:column;gap:3px}
+.campo-label{font-size:11px;font-weight:600;color:var(--azul);text-transform:uppercase;letter-spacing:.5px}
+.campo-input{font-size:16px;padding:8px 10px;border:1.5px solid var(--borde);border-radius:8px;background:var(--gris);color:var(--texto);outline:none;width:100%;text-align:center;font-weight:600}
+.campo-input:focus{border-color:var(--azul2);background:white}
+.campo-input.diff-neg{border-color:var(--rojo);background:var(--rojo-bg);color:var(--rojo)}
+.campo-input.diff-ok{border-color:var(--verde);background:var(--verde-bg);color:var(--verde)}
+.campo-dif{font-size:13px;font-weight:700;text-align:center;padding:4px 8px;border-radius:6px;margin-top:2px}
+.campo-dif.neg{background:var(--rojo-bg);color:var(--rojo)}
+.campo-dif.ok{background:var(--verde-bg);color:var(--verde)}
+.campo-dif.neu{background:var(--gris2);color:var(--muted)}
+.obs-input{width:100%;font-size:14px;padding:7px 10px;border:1.5px solid var(--borde);border-radius:8px;background:var(--gris);color:var(--texto);outline:none;margin-top:6px}
+.obs-input:focus{border-color:var(--azul2);background:white}
+/* Totales bar */
+.totales-bar{background:var(--azul);color:white;margin:0 12px;border-radius:var(--radio);padding:12px 14px;margin-bottom:8px;position:sticky;top:56px;z-index:100}
+.totales-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:4px;text-align:center}
+.tot-val{font-size:17px;font-weight:700}
+.tot-lab{font-size:10px;opacity:.75;margin-top:1px}
+/* Gastos */
+.gastos-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.gasto-row{display:flex;flex-direction:column;gap:3px}
+.gasto-label{font-size:12px;font-weight:600;color:var(--azul)}
+.gasto-input{font-size:15px;padding:8px 10px;border:1.5px solid var(--borde);border-radius:8px;background:var(--gris);color:var(--texto);outline:none;width:100%;text-align:right}
+.gasto-input:focus{border-color:var(--azul2);background:white}
+/* Resumen cuadre */
+.resumen-row{display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:1px solid var(--gris2);font-size:14px}
+.resumen-row:last-child{border:none}
+.resumen-row.total{font-weight:700;font-size:15px;padding-top:10px}
+.resumen-row.diff-ok{color:var(--verde);font-weight:700}
+.resumen-row.diff-neg{color:var(--rojo);font-weight:700}
+/* Buttons */
+.btn{display:block;width:calc(100% - 24px);margin:6px 12px;padding:14px;border:none;border-radius:var(--radio);font-size:16px;font-weight:700;cursor:pointer;transition:transform .1s}
+.btn:active{transform:scale(.97)}
+.btn-blue{background:var(--azul);color:white}
+.btn-green{background:#25D366;color:white}
+.btn-azul2{background:var(--azul2);color:white}
+.btn-rojo{background:var(--rojo-bg);color:var(--rojo)}
+/* Toast */
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(80px);background:#1e293b;color:white;padding:10px 20px;border-radius:30px;font-size:13px;font-weight:600;transition:transform .3s;z-index:500;white-space:nowrap;pointer-events:none}
+.toast.show{transform:translateX(-50%) translateY(0)}
+/* Empty */
+.empty{text-align:center;padding:50px 20px;color:var(--muted)}
+.empty-icon{font-size:48px;margin-bottom:14px}
+
+/* ── TIPO DE PAGO ── */
+.pago-btns{display:grid;grid-template-columns:1fr 1fr 1fr;gap:5px;margin-top:6px}
+.pago-btn{padding:7px 4px;border:1.5px solid var(--borde);border-radius:8px;background:var(--gris);
+  font-size:11px;font-weight:700;color:var(--muted);cursor:pointer;text-align:center;transition:.15s;line-height:1.3}
+.pago-btn.sel-ef {background:#166534;border-color:#166534;color:white}
+.pago-btn.sel-tr {background:#1565c0;border-color:#1565c0;color:white}
+.pago-btn.sel-cr {background:#92400e;border-color:#92400e;color:white}
+/* ── SUMARIZADO PAGO ── */
+.pago-summary{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-top:6px}
+.pago-box{border-radius:10px;padding:10px 8px;text-align:center}
+.pago-box-ef{background:var(--verde-bg)}
+.pago-box-tr{background:var(--celeste)}
+.pago-box-cr{background:var(--ambar-bg)}
+.pago-box-val{font-size:17px;font-weight:700}
+.pago-box-ef .pago-box-val{color:var(--verde)}
+.pago-box-tr .pago-box-val{color:var(--azul2)}
+.pago-box-cr .pago-box-val{color:var(--ambar)}
+.pago-box-lab{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;margin-top:3px}
+.pago-box-ef .pago-box-lab{color:var(--verde)}
+.pago-box-tr .pago-box-lab{color:var(--azul2)}
+.pago-box-cr .pago-box-lab{color:var(--ambar)}
+.pago-box-sub{font-size:11px;margin-top:2px;opacity:.8}
+
+/* ── EXTRAS ── */
+.extra-form{background:var(--celeste);border-radius:10px;padding:12px;margin-top:10px}
+.extra-form-title{font-size:12px;font-weight:700;color:var(--azul);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px}
+.extra-row{background:var(--blanco);border-radius:8px;padding:10px 12px;margin-bottom:6px;border-left:3px solid var(--azul2)}
+.extra-row:last-child{margin-bottom:0}
+
+/* ── RESUMEN POR ZONA ── *//* ── RESUMEN POR ZONA ── */
+.zona-table{width:100%;border-collapse:collapse;font-size:13px;margin-top:4px}
+.zona-table thead tr{background:var(--azul);color:white}
+.zona-table thead th{padding:7px 8px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;text-align:center}
+.zona-table thead th:first-child{text-align:left}
+.zona-table tbody tr:nth-child(even){background:var(--gris)}
+.zona-table tbody td{padding:7px 8px;border-bottom:1px solid var(--gris2);text-align:center;vertical-align:middle}
+.zona-table tbody td:first-child{text-align:left;font-weight:600}
+.zona-table tfoot tr{background:var(--azul);color:white}
+.zona-table tfoot td{padding:7px 8px;font-weight:700;font-size:12px;text-align:center}
+.zona-table tfoot td:first-child{text-align:left}
+.prom-pill{display:inline-block;background:var(--celeste);color:var(--azul);font-size:11px;font-weight:700;padding:2px 8px;border-radius:20px}
+.prom-pill.diff{background:var(--ambar-bg);color:var(--ambar)}
+</style>
+<style id="ver-style">
+#app-version{position:fixed;bottom:4px;right:6px;font-size:10px;color:rgba(255,255,255,.5);
+background:rgba(0,0,0,.3);padding:2px 6px;border-radius:4px;z-index:9999;
+font-family:monospace;pointer-events:none;user-select:none}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div><div class="topbar-title">Cuadre de Camiones</div><div class="topbar-sub" id="top-sub">Villar Agua</div></div>
+  <button id="btn-ref" onclick="cargarDatos()" style="background:rgba(255,255,255,.2);border:none;color:white;padding:7px 14px;border-radius:20px;font-size:13px;font-weight:600;cursor:pointer">⟳</button>
+</div>
+
+<!-- PANTALLA 1: DASHBOARD -->
+<div class="screen active" id="screen-dashboard">
+  <div style="margin:8px 12px;background:white;border-radius:12px;padding:12px;box-shadow:0 1px 4px rgba(0,0,0,.1)">
+      <div style="font-size:12px;font-weight:700;color:var(--azul);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Jornada a cuadrar</div>
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+        <input type="date" id="jornada-fecha" style="font-size:15px;padding:8px 12px;border:1.5px solid var(--borde);border-radius:8px;flex:1"
+          onchange="cambiarJornada()">
+        <button onclick="cambiarJornada()" style="padding:9px 16px;background:var(--azul2);color:white;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer">Cargar</button>
+      </div>
+      <div id="jornada-info" style="margin-top:6px;font-size:12px;color:var(--muted)">Selecciona la fecha de la jornada a cuadrar</div>
+    </div>
+    <div id="dashboard-list"></div>
+</div>
+
+<!-- PANTALLA 2: CUADRE DE CAMION -->
+<div class="screen" id="screen-cuadre">
+  <div class="cuadre-header">
+    <button class="back-btn" onclick="volverDashboard()">‹</button>
+    <div>
+      <div class="cuadre-title" id="cuadre-title">Cuadre</div>
+      <div class="cuadre-sub"  id="cuadre-sub"></div>
+    </div>
+  </div>
+
+  <!-- Totales sticky -->
+  <div class="totales-bar" id="totales-bar">
+    <div class="totales-grid">
+      <div><div class="tot-val" id="tot-prev-v">0</div><div class="tot-lab">Prev. V</div></div>
+      <div><div class="tot-val" id="tot-real-v">0</div><div class="tot-lab">Real V</div></div>
+      <div><div class="tot-val" id="tot-prev-p">0</div><div class="tot-lab">Prev. P</div></div>
+      <div><div class="tot-val" id="tot-real-p">0</div><div class="tot-lab">Real P</div></div>
+    </div>
+  </div>
+
+  <div id="clientes-cuadre"></div>
+
+  <!-- Gastos -->
+  <div class="sec-label">Gastos del camión</div>
+  <div class="card">
+    <div class="gastos-grid">
+      <div class="gasto-row"><span class="gasto-label">Pago ayudante</span><input class="gasto-input" id="g-ayudante" type="number" placeholder="0" inputmode="numeric" oninput="recalcResumen()"></div>
+      <div class="gasto-row"><span class="gasto-label">Combustible</span><input class="gasto-input" id="g-combustible" type="number" placeholder="0" inputmode="numeric" oninput="recalcResumen()"></div>
+      <div class="gasto-row"><span class="gasto-label">Peaje / Giro</span><input class="gasto-input" id="g-peaje" type="number" placeholder="0" inputmode="numeric" oninput="recalcResumen()"></div>
+      <div class="gasto-row"><span class="gasto-label">Otros</span><input class="gasto-input" id="g-otros" type="number" placeholder="0" inputmode="numeric" oninput="recalcResumen()"></div>
+    </div>
+  </div>
+
+  <!-- Efectivo recibido -->
+  <div class="sec-label">Efectivo recibido</div>
+  <div class="card">
+    <div class="gastos-grid">
+      <div class="gasto-row"><span class="gasto-label">Sobrante día anterior</span><input class="gasto-input" id="g-anterior" type="number" placeholder="0" inputmode="numeric" oninput="recalcResumen()"></div>
+      <div class="gasto-row"><span class="gasto-label">+ Cajas cargadas hoy</span><input class="gasto-input" id="g-cargadas" type="number" placeholder="0" inputmode="numeric" oninput="recalcResumen()"></div>
+      <div class="gasto-row"><span class="gasto-label">= Total disponible</span><input class="gasto-input" id="g-disponible" readonly style="background:var(--celeste);color:var(--azul);font-weight:700"></div>
+      <div class="gasto-row"><span class="gasto-label">Sobrante físico (regreso)</span><input class="gasto-input" id="g-sobrante" type="number" placeholder="0" inputmode="numeric" oninput="recalcResumen()"></div>
+      <div class="gasto-row"><span class="gasto-label">Efectivo recibido $</span><input class="gasto-input" id="g-efectivo" type="number" placeholder="0" inputmode="numeric" oninput="recalcResumen()"></div>
+      <div class="gasto-row"><span class="gasto-label">Pendientes / Créditos</span><input class="gasto-input" id="g-creditos" type="number" placeholder="0" inputmode="numeric" oninput="recalcResumen()"></div>
+    </div>
+  </div>
+
+  <!-- Resumen final -->
+  <div class="sec-label">Resultado del cuadre</div>
+  <div class="card">
+    <div class="resumen-row"><span>Total facturado (preventa)</span><span id="r-facturado">$0</span></div>
+    <div class="resumen-row"><span>Total facturado (real entregado)</span><span id="r-real">$0</span></div>
+    <div class="resumen-row"><span>Efectivo recibido</span><span id="r-efectivo">$0</span></div>
+    <div class="resumen-row"><span>Total gastos</span><span id="r-gastos">$0</span></div>
+    <div class="resumen-row"><span>Transferencias + Créditos</span><span id="r-creditos">$0</span></div>
+    <div class="resumen-row total"><span>A entregar a caja</span><span id="r-entregar">$0</span></div>
+    <div class="resumen-row" id="r-dif-ef-row"><span>Diferencia efectivo</span><span id="r-dif-ef">$0</span></div>
+    <div class="resumen-row"><span>Total disponible (anterior + cargadas)</span><span id="r-disponible">0</span></div>
+    <div class="resumen-row"><span>Cajas preventa</span><span id="r-caj-prev">0</span></div>
+    <div class="resumen-row"><span>Cajas entregadas (real)</span><span id="r-caj-real">0</span></div>
+    <div class="resumen-row" id="r-dif-caj-row"><span>Diferencia cajas</span><span id="r-dif-caj">0</span></div>
+  </div>
+
+    <div class="sec-label">Sumarizado por tipo de cobro</div>
+  <div class="card" style="padding:12px">
+    <div id="pago-summary-cont">
+      <div style="text-align:center;color:var(--muted);font-size:13px;padding:8px">Llena el cuadre para ver el sumarizado</div>
+    </div>
+    <div style="margin-top:10px;border-top:1px solid var(--gris2);padding-top:10px">
+      <div class="resumen-row" style="font-size:13px"><span>Efectivo a recibir</span><span id="r-ef-neto" style="color:var(--verde);font-weight:700">$0</span></div>
+      <div class="resumen-row" style="font-size:13px"><span>Transferencias</span><span id="r-tr-neto" style="color:var(--azul2);font-weight:700">$0</span></div>
+      <div class="resumen-row" style="font-size:13px"><span>Créditos (pendiente)</span><span id="r-cr-neto" style="color:var(--ambar);font-weight:700">$0</span></div>
+    </div>
+  </div>
+  <div class="sec-label">Resumen por zona (preventa)</div>
+  <div class="card" style="padding:10px">
+    <div id="zona-resumen">—</div>
+  </div>
+  <!-- Extra clients -->
+  <div class="sec-label">Clientes extra / emergencia</div>
+  <div style="margin:0 12px">
+    <div id="extras-list"></div>
+    <div class="card" style="padding:12px;background:var(--celeste)">
+      <div class="card-title" style="color:var(--azul)">➕ Agregar cliente extra</div>
+      <div style="display:grid;gap:8px">
+        <input type="text" id="ex-cliente" placeholder="Nombre del cliente">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+          <input type="number" id="ex-cajas" placeholder="Cajas" min="0" inputmode="numeric">
+          <input type="number" id="ex-promo" placeholder="Promo" min="0" inputmode="numeric">
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+          <input type="number" id="ex-precio" placeholder="$/caja" min="0" inputmode="numeric">
+          <input type="text" id="ex-zona" placeholder="Zona (opcional)">
+        </div>
+        <button onclick="agregarExtra()" style="padding:12px;background:var(--azul2);color:white;border:none;border-radius:10px;font-size:15px;font-weight:700;cursor:pointer">+ Agregar cliente extra</button>
+      </div>
+    </div>
+  </div>
+
+  <button class="btn btn-blue" onclick="guardarCuadre()">💾 Guardar cuadre</button>
+  <button class="btn" style="background:#166534;color:white" onclick="exportarExcel()">📊 Exportar fila para Excel</button>
+  <button class="btn" style="background:var(--gris2);color:var(--texto);font-size:14px" onclick="volverDashboard()">‹ Volver al listado</button>
+  <div style="height:20px"></div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+
+/* ── JSONBIN ── */
+const JKEY='$2a$10$q4eNs6WXxS3oXb25mIeINuoiZaCd69ruJI.IZhZGcstCRL4xDOPfu';
+const JBIN='69e249f336566621a8c3c97c';
+const JURL='https://api.jsonbin.io/v3/b/'+JBIN;
+
+async function leerBin(){
+  let r;
+  try{ r=await fetch(JURL+'/latest',{headers:{'X-Master-Key':JKEY}}); }
+  catch(e){ throw new Error('Sin conexión: '+e.message); }
+  if(r.status===401) throw new Error('API Key incorrecta (401)');
+  if(r.status===404) throw new Error('Bin ID no encontrado (404)');
+  if(!r.ok) throw new Error('Error HTTP '+r.status);
+  const j=await r.json();
+  if(!j.record) throw new Error('Bin vacío');
+  return j.record;
+}
+async function escribirBin(d){
+  const r=await fetch(JURL,{method:'PUT',
+    headers:{'Content-Type':'application/json','X-Master-Key':JKEY},
+    body:JSON.stringify(d)});
+  if(!r.ok) throw new Error('Error guardando: '+r.status);
+}
+
+/* ── JORNADA HELPERS ── */
+function hoy(){ const d=new Date(); const p=n=>String(n).padStart(2,'0'); return d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate()); }
+function fmtJornada(f){ if(!f)return'—'; const[y,m,d]=f.split('-'); const M=['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic']; return d+'/'+M[+m-1]+'/'+y; }
+function getJornada(bin, fecha){ return (bin.jornadas&&bin.jornadas[fecha])||{pedidos:{},asignaciones:{},cuadres:{}}; }
+function setJornada(bin, fecha, data){ if(!bin.jornadas) bin.jornadas={}; bin.jornadas[fecha]=data; }
+function listarJornadas(bin){
+  if(!bin.jornadas) return [];
+  return Object.keys(bin.jornadas).sort().reverse(); // newest first
+}
+function limpiarJornadasViejas(bin, keepDays=45){
+  if(!bin.jornadas) return;
+  const cutoff=new Date(); cutoff.setDate(cutoff.getDate()-keepDays);
+  const cut=cutoff.toISOString().slice(0,10);
+  Object.keys(bin.jornadas).forEach(f=>{ if(f<cut) delete bin.jornadas[f]; });
+}
+
+let subs={}, allSubs={}, cams=[], asig={}, cuadres={}, jornadaActiva=hoy(), binCache={};
+let binData={};
+let activeCamId=null;
+// cuadreLocal: { clienteIdx: {realCajas, realProm, cobrado, obs}, gastos:{...}, cargadas, sobrante, efectivo, creditos }
+let cuadreLocal={};
+
+window.addEventListener('DOMContentLoaded',()=>{
+  const jf=document.getElementById('jornada-fecha');
+  if(jf) jf.value=hoy();
+  const h=new Date();
+  const M=['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+  document.getElementById('top-sub').textContent='Villar · '+h.getDate()+'/'+M[h.getMonth()]+'/'+h.getFullYear();
+  cargarDatos();
+});
+
+async function cargarDatos(){
+  const btn=document.getElementById('btn-ref');
+  const cont=document.getElementById('dashboard-list');
+  btn.textContent='⟳ ...';
+  cont.innerHTML='<div style="text-align:center;padding:30px;color:var(--muted)">Conectando...</div>';
+  try{
+    binCache=await leerBin();
+    cams=(binCache.camiones&&binCache.camiones.length)?binCache.camiones:[];
+    const jf=document.getElementById('jornada-fecha');
+    if(jf&&!jf.value){ jf.value=jornadaActiva; }
+    cargarJornada();
+  }catch(e){
+    cont.innerHTML='<div style="margin:16px;background:#fee2e2;border-radius:12px;padding:16px;color:#991b1b"><strong>⚠ '+e.message+'</strong><br><button onclick="cargarDatos()" style="margin-top:10px;padding:8px 16px;background:#991b1b;color:white;border:none;border-radius:8px;cursor:pointer">Reintentar</button></div>';
+    console.error(e);
+  }
+  btn.textContent='⟳';
+}
+
+function cambiarJornada(){
+  const jf=document.getElementById('jornada-fecha');
+  if(jf&&jf.value) jornadaActiva=jf.value;
+  cargarJornada();
+}
+
+function cargarJornada(){
+  // Rebuild allSubs + allAsig from ALL jornadas (same as asignacion app)
+  allSubs={};
+  const allAsig={};
+  if(binCache.jornadas){
+    Object.keys(binCache.jornadas).forEach(fecha=>{
+      const j=binCache.jornadas[fecha];
+      if(j.pedidos){
+        Object.keys(j.pedidos).forEach(sid=>{
+          const gk=fecha+'__'+sid;
+          allSubs[gk]={...j.pedidos[sid], jornadaPedido:fecha};
+        });
+      }
+      if(j.asignaciones){
+        Object.keys(j.asignaciones).forEach(k=>{
+          allAsig[fecha+'__'+k]=j.asignaciones[k];
+        });
+      }
+    });
+  }
+
+  // subs/asig for selected jornada (for backward compat)
+  const j=getJornada(binCache, jornadaActiva);
+  subs=j.pedidos||{};
+  asig=j.asignaciones||{};
+  cuadres=j.cuadres||{};
+
+  const info=document.getElementById('jornada-info');
+  const nAsig=Object.keys(allAsig).length;
+  if(info) info.textContent=fmtJornada(jornadaActiva)+' · '+Object.keys(allSubs).length+' preventas · '+nAsig+' asignaciones';
+
+  renderDashboard(allSubs, allAsig);
+}
+
+async function diagnosticarConexion(){
+  const el=document.getElementById('diag-result');
+  if(!el) return;
+  let log='';
+  try{
+    log+='[1] Probando conexión a internet...\n';
+    el.textContent=log;
+    const t1=Date.now();
+    const r=await fetch('https://api.jsonbin.io/v3/b/'+JBIN+'/latest',
+      {headers:{'X-Master-Key':JKEY}});
+    const ms=Date.now()-t1;
+    log+=`[2] Respuesta HTTP: ${r.status} (${ms}ms)\n`;
+    el.textContent=log;
+    if(r.status===200){
+      const j=await r.json();
+      const keys=Object.keys(j.record||{});
+      log+=`[3] ✓ Bin accesible. Claves raíz: ${keys.join(', ')||'(vacío)'}\n`;
+      log+=`    pedidos: ${Object.keys(j.record?.pedidos||{}).length}\n`;
+      log+=`    camiones: ${(j.record?.camiones||[]).length}\n`;
+      log+=`    asignaciones: ${Object.keys(j.record?.asignaciones||{}).length}\n`;
+      log+=`    cuadres: ${Object.keys(j.record?.cuadres||{}).length}\n`;
+      log+='[4] Datos cargados correctamente. Recargando...';
+      el.textContent=log;
+      setTimeout(()=>cargarDatos(),1500);
+    } else if(r.status===401){
+      log+='[3] ✗ Error 401: API Key incorrecta o expirada.\n';
+      log+='    Verificar la clave en jsonbin.io → Account → API Keys';
+    } else if(r.status===404){
+      log+='[3] ✗ Error 404: Bin ID no encontrado.\n';
+      log+='    Verificar el Bin ID en jsonbin.io';
+    } else {
+      log+=`[3] ✗ Error inesperado: ${r.status}`;
+    }
+  }catch(err){
+    log+=`[2] ✗ Sin conexión o error de red: ${err.message}\n`;
+    log+='    Verifica que el dispositivo tiene internet activo.';
+  }
+  if(el) el.textContent=log;
+}
+
+async function guardarBin(){
+  limpiarJornadasViejas(binCache);
+  // Save cuadres under the delivery date jornada
+  if(!binCache.jornadas) binCache.jornadas={};
+  if(!binCache.jornadas[jornadaActiva]) binCache.jornadas[jornadaActiva]={pedidos:{},asignaciones:{},cuadres:{}};
+  binCache.jornadas[jornadaActiva].cuadres=cuadres;
+  await escribirBin(binCache);
+}
+
+/* ── DASHBOARD ── */
+function renderDashboard(allSubsParam, allAsigParam){
+  const _subs=allSubsParam||allSubs;
+  const _asig=allAsigParam||allSubs;
+  const cont=document.getElementById('dashboard-list');
+  // Find cams that have assigned clients
+  const activeCams = cams.filter(cam=>{
+    return Object.keys(asig).some(k=>(asig[k]&&asig[k].camionId===cam.id)||asig[k]===cam.id);
+  });
+
+  if(!activeCams.length){
+    cont.innerHTML=`<div class="empty"><div class="empty-icon">🚛</div>
+      <div style="font-size:15px;font-weight:600;margin-bottom:6px">Sin asignaciones aún</div>
+      <div style="font-size:13px">El encargado debe finalizar las asignaciones<br>del día para que aparezcan aquí</div>
+    </div>`;
+    return;
+  }
+
+  cont.innerHTML = activeCams.map(cam=>{
+    const items=getItemsCam(cam.id);
+    const totPrevV=items.reduce((a,x)=>a+x.p.cajas,0);
+    const totPrevP=items.reduce((a,x)=>a+x.p.promo,0);
+    const totPrevD=items.reduce((a,x)=>a+x.p.total,0);
+    const cq=cuadres[cam.id]||{};
+    const hasCuadre=Object.keys(cq).length>0;
+
+    // Status
+    let statusClass='badge-pending', statusText='Pendiente';
+    if(hasCuadre){
+      const difEf = calcDifEf(cam.id, cq);
+      const difCaj = calcDifCaj(cam.id, cq);
+      if(difEf===0 && difCaj===0){statusClass='badge-done';statusText='✓ Cuadrado';}
+      else{statusClass='badge-diff';statusText=`⚠ Diferencias`;}
+    }
+
+    const numAsig = cam.asignacionId || '—';
+    const fechaStr = cam.fechaAsignacion ? fmtFecha(cam.fechaAsignacion) : '—';
+
+    return`<div class="cam-card" onclick="abrirCuadre('${cam.id}')">
+      <div class="cam-card-head">
+        <span class="cam-icon">🚛</span>
+        <div class="cam-info">
+          <div class="cam-name">${esc(cam.nombre)}</div>
+          <div class="cam-chofer">${esc(cam.chofer)}</div>
+          <div class="cam-id"># ${numAsig}</div>
+        </div>
+        <div class="cam-stats">
+          <div class="cam-stat-big">${totPrevV+totPrevP}</div>
+          <div class="cam-stat-sub">cajas · ${items.length} clientes</div>
+          <div><span class="status-badge ${statusClass}">${statusText}</span></div>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function getItemsCam(camId){
+  const items=[];
+  // Search across ALL jornadas for clients assigned to this camion for selected delivery date
+  if(binCache.jornadas){
+    Object.keys(binCache.jornadas).forEach(fecha=>{
+      const j=binCache.jornadas[fecha];
+      if(!j.pedidos||!j.asignaciones) return;
+      Object.keys(j.pedidos).forEach(sid=>{
+        const s=j.pedidos[sid];
+        s.pedidos.forEach((p,i)=>{
+          const a=j.asignaciones[sid+'__'+i];
+          if(!a) return;
+          const aCamId=a.camionId||a;
+          const aFecha=a.fechaEntrega||fecha;
+          if(aCamId===camId && aFecha===jornadaActiva){
+            items.push({p, zona:s.zona, sid, pi:i, jornadaPedido:fecha});
+          }
+        });
+      });
+    });
+  }
+  return items;
+}
+function getExtrasCam(camId){
+  const cq=cuadres[camId]||{};
+  return cq.extras||[];
+}
+
+
+function calcDifEf(camId, cq){
+  const items=getItemsCam(camId);
+  const totReal=items.reduce((a,x,i)=>{
+    const ci=cq['c'+i]||{};
+    const real=ci.realCajas!==undefined?ci.realCajas:x.p.cajas;
+    const pr=ci.precio!==undefined?ci.precio:x.p.precio;
+    return a+(real*pr);
+  },0);
+  const ef=+(cq.gastos?.efectivo||0);
+  const gastos=(+(cq.gastos?.ayudante||0))+(+(cq.gastos?.combustible||0))+(+(cq.gastos?.peaje||0))+(+(cq.gastos?.otros||0));
+  const cred=+(cq.gastos?.creditos||0);
+  return ef - totReal + gastos + cred;
+}
+
+function calcDifCaj(camId, cq){
+  const items=getItemsCam(camId);
+  const anterior=+(cq.gastos?.anterior||0);
+  const cargadas=+(cq.gastos?.cargadas||0);
+  const disponible=anterior+cargadas;
+  const sobrante=+(cq.gastos?.sobrante||0);
+  const totRealC=items.reduce((a,x,i)=>{
+    const ci=cq['c'+i]||{};
+    return a+(ci.realCajas!==undefined?ci.realCajas:x.p.cajas)+(ci.realProm!==undefined?ci.realProm:x.p.promo);
+  },0);
+  if(!disponible) return 0;
+  return disponible - totRealC - sobrante;
+}
+
+/* ── CUADRE ── */
+function abrirCuadre(camId){
+  activeCamId=camId;
+  const cam=cams.find(c=>c.id===camId);
+  if(!cam){showToast('Camión no encontrado');return;}
+  cuadreLocal=JSON.parse(JSON.stringify(cuadres[camId]||{}));
+
+  document.getElementById('cuadre-title').textContent=cam.nombre+' — '+esc(cam.chofer);
+  document.getElementById('cuadre-sub').textContent='# '+(cam.asignacionId||'—')+' · '+(cam.fechaAsignacion?fmtFecha(cam.fechaAsignacion):'—');
+
+  const g=cuadreLocal.gastos||{};
+  document.getElementById('g-ayudante').value   = g.ayudante   ||'';
+  document.getElementById('g-combustible').value= g.combustible||'';
+  document.getElementById('g-peaje').value      = g.peaje      ||'';
+  document.getElementById('g-otros').value      = g.otros      ||'';
+  document.getElementById('g-anterior').value   = g.anterior   ||'';
+  document.getElementById('g-cargadas').value   = g.cargadas   ||'';
+  document.getElementById('g-sobrante').value   = g.sobrante   ||'';
+  document.getElementById('g-efectivo').value   = g.efectivo   ||'';
+  document.getElementById('g-creditos').value   = g.creditos   ||'';
+
+  renderClientesCuadre(camId);
+  renderExtras();
+  recalcResumen();
+  renderZonaResumen();
+  renderPagoSummary();
+  mostrarScreen('cuadre');
+  window.scrollTo(0,0);
+}
+
+function renderClientesCuadre(camId){
+  const items=getItemsCam(camId);
+  const cont=document.getElementById('clientes-cuadre');
+
+  cont.innerHTML=items.map((x,i)=>{
+    const {p}=x;
+    const ci=cuadreLocal['c'+i]||{};
+    const realCajas = ci.realCajas!==undefined ? ci.realCajas : p.cajas;
+    const realProm  = ci.realProm!==undefined  ? ci.realProm  : p.promo;
+    const cobrado   = ci.cobrado!==undefined   ? ci.cobrado   : '';
+    const obs       = ci.obs||'';
+
+    const difCaj = realCajas - p.cajas;
+    const difProm = realProm - p.promo;
+
+    let cardClass='';
+    if(p.credito) cardClass='credito';
+    else if(difCaj!==0||difProm!==0) cardClass='diferencia';
+    else if(realCajas===p.cajas && realProm===p.promo) cardClass='ok';
+
+    const flags = (p.credito?'<span style="background:var(--verde-bg);color:var(--verde);font-size:10px;font-weight:700;padding:2px 7px;border-radius:10px;margin-left:4px">Crédito</span>':'')
+                + (p.ncf?'<span style="background:#ede9fe;color:#4c1d95;font-size:10px;font-weight:700;padding:2px 7px;border-radius:10px;margin-left:4px">NCF</span>':'')
+                + (p.nota?`<div style="font-size:11px;color:var(--muted);margin-top:2px">📝 ${esc(p.nota)}</div>`:'');
+
+    return`<div class="cli-cuadre ${cardClass}" id="cc-${i}">
+      <div class="cli-top">
+        <div>
+          <div class="cli-nombre">${esc(p.cliente)}${flags}</div>
+          <div class="cli-zona">${esc(x.zona)}</div>
+          <div class="cli-prev">Preventa: V:${p.cajas} P:${p.promo} · $${p.precio}/cj · $${fmt(p.total)}</div>
+        </div>
+      </div>
+      <div class="cli-campos">
+        <div class="campo-group">
+          <span class="campo-label">Real entregado (V)</span>
+          <input class="campo-input" type="number" min="0" inputmode="numeric"
+            value="${realCajas}" id="rc-${i}"
+            oninput="updateCliente(${i},'realCajas',+this.value)">
+          <div class="campo-dif ${difCaj===0?'ok':difCaj>0?'ok':'neg'}" id="dif-v-${i}">
+            ${difCaj===0?'= Igual':difCaj>0?'+ '+difCaj:difCaj}
+          </div>
+        </div>
+        <div class="campo-group">
+          <span class="campo-label">Real promoción (P)</span>
+          <input class="campo-input" type="number" min="0" inputmode="numeric"
+            value="${realProm}" id="rp-${i}"
+            oninput="updateCliente(${i},'realProm',+this.value)">
+          <div class="campo-dif ${difProm===0?'ok':difProm>0?'ok':'neg'}" id="dif-p-${i}">
+            ${difProm===0?'= Igual':difProm>0?'+ '+difProm:difProm}
+          </div>
+        </div>
+        <div class="campo-group">
+          <span class="campo-label">Cobrado $</span>
+          <input class="campo-input" type="number" min="0" inputmode="numeric"
+            value="${cobrado}" id="cb-${i}"
+            oninput="updateCliente(${i},'cobrado',+this.value)"
+            placeholder="${p.credito?'Crédito':p.total}">
+        </div>
+        <div class="campo-group">
+          <span class="campo-label">Estado</span>
+          <select class="campo-input" id="st-${i}" onchange="updateCliente(${i},'estado',this.value)"
+            style="text-align:left;font-size:13px">
+            <option value="entregado" ${(ci.estado||'entregado')==='entregado'?'selected':''}>✓ Entregado</option>
+            <option value="parcial"   ${ci.estado==='parcial'  ?'selected':''}>⚠ Parcial</option>
+            <option value="devuelto"  ${ci.estado==='devuelto' ?'selected':''}>↩ No entregado</option>
+          </select>
+        </div>
+      </div>
+      <div style="margin-top:6px">
+        <div style="font-size:11px;font-weight:600;color:var(--azul);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Tipo de cobro</div>
+        <div class="pago-btns">
+          <div class="pago-btn ${(ci.tipoPago||'efectivo')==='efectivo'?'sel-ef':''}" id="tp-ef-${i}" onclick="setTipoPago(${i},'efectivo')">💵 Efectivo</div>
+          <div class="pago-btn ${ci.tipoPago==='transferencia'?'sel-tr':''}" id="tp-tr-${i}" onclick="setTipoPago(${i},'transferencia')">🏦 Transfer.</div>
+          <div class="pago-btn ${ci.tipoPago==='credito'?'sel-cr':''}" id="tp-cr-${i}" onclick="setTipoPago(${i},'credito')">📋 Crédito</div>
+        </div>
+      </div>
+      <input type="text" class="obs-input" placeholder="Observación (opcional)..."
+        value="${esc(obs)}" id="ob-${i}"
+        oninput="updateCliente(${i},'obs',this.value)">
+    </div>`;
+  }).join('');
+
+  recalcTotales(items);
+  renderExtras();
+}
+
+function updateCliente(i, field, val){
+  if(!cuadreLocal['c'+i]) cuadreLocal['c'+i]={};
+  cuadreLocal['c'+i][field]=val;
+
+  // Update dif indicators
+  const items=getItemsCam(activeCamId);
+  if(items[i]){
+    const p=items[i].p;
+    const ci=cuadreLocal['c'+i];
+    if(field==='realCajas'){
+      const dif=(ci.realCajas||0)-p.cajas;
+      const el=document.getElementById('dif-v-'+i);
+      if(el){el.textContent=dif===0?'= Igual':dif>0?'+ '+dif:''+dif;el.className='campo-dif '+(dif===0?'ok':dif>0?'ok':'neg');}
+    }
+    if(field==='realProm'){
+      const dif=(ci.realProm||0)-p.promo;
+      const el=document.getElementById('dif-p-'+i);
+      if(el){el.textContent=dif===0?'= Igual':dif>0?'+ '+dif:''+dif;el.className='campo-dif '+(dif===0?'ok':dif>0?'ok':'neg');}
+    }
+  }
+  recalcTotales(items);
+  recalcResumen();
+}
+
+function recalcTotales(items){
+  let prevV=0,prevP=0,realV=0,realP=0;
+  items.forEach((x,i)=>{
+    prevV+=x.p.cajas; prevP+=x.p.promo;
+    const ci=cuadreLocal['c'+i]||{};
+    realV+=ci.realCajas!==undefined?ci.realCajas:x.p.cajas;
+    realP+=ci.realProm!==undefined ?ci.realProm :x.p.promo;
+  });
+  document.getElementById('tot-prev-v').textContent=prevV;
+  document.getElementById('tot-prev-p').textContent=prevP;
+  document.getElementById('tot-real-v').textContent=realV;
+  document.getElementById('tot-real-p').textContent=realP;
+}
+
+function recalcResumen(){
+  const items=getItemsCam(activeCamId);
+  let totPrevD=0, totRealD=0;
+  items.forEach((x,i)=>{
+    totPrevD+=x.p.total;
+    const ci=cuadreLocal['c'+i]||{};
+    const rC=ci.realCajas!==undefined?ci.realCajas:x.p.cajas;
+    totRealD+=rC*x.p.precio;
+  });
+
+  const ayudante   =+(document.getElementById('g-ayudante').value)||0;
+  const combustible=+(document.getElementById('g-combustible').value)||0;
+  const peaje      =+(document.getElementById('g-peaje').value)||0;
+  const otros      =+(document.getElementById('g-otros').value)||0;
+  const anterior   =+(document.getElementById('g-anterior').value)||0;
+  const cargadas   =+(document.getElementById('g-cargadas').value)||0;
+  const disponible = anterior+cargadas;
+  const dispEl=document.getElementById('g-disponible');if(dispEl)dispEl.value=disponible||'';
+  const sobrante   =+(document.getElementById('g-sobrante').value)||0;
+  const efectivo   =+(document.getElementById('g-efectivo').value)||0;
+  const creditos   =+(document.getElementById('g-creditos').value)||0;
+
+  const gastos=ayudante+combustible+peaje+otros;
+
+  // Compute pago breakdown from client data
+  const items2=getItemsCam(activeCamId);
+  let sumEf=0,sumTr=0,sumCr=0;
+  // Include extras in pago breakdown
+  (cuadreLocal.extras||[]).forEach(ex=>{
+    const rD2=ex.cajas*ex.precio;
+    const tipo=ex.tipoPago||'efectivo';
+    if(tipo==='transferencia') sumTr+=rD2;
+    else if(tipo==='credito')  sumCr+=rD2;
+    else                       sumEf+=rD2;
+  });
+  items2.forEach((x,i2)=>{
+    const ci2=cuadreLocal['c'+i2]||{};
+    const rV2=ci2.realCajas!==undefined?ci2.realCajas:x.p.cajas;
+    const rD2=rV2*x.p.precio;
+    const tipo=ci2.tipoPago||'efectivo';
+    if(tipo==='transferencia') sumTr+=rD2;
+    else if(tipo==='credito')  sumCr+=rD2;
+    else                       sumEf+=rD2;
+  });
+  setText('r-ef-neto','$'+fmt(sumEf));
+  setText('r-tr-neto','$'+fmt(sumTr));
+  setText('r-cr-neto','$'+fmt(sumCr));
+
+  const entregar=efectivo-gastos;
+  const difEf=efectivo-(sumEf)+gastos;
+
+  let totRealV=0,totRealP=0;
+  items.forEach((x,i)=>{
+    const ci=cuadreLocal['c'+i]||{};
+    totRealV+=ci.realCajas!==undefined?ci.realCajas:x.p.cajas;
+    totRealP+=ci.realProm!==undefined?ci.realProm:x.p.promo;
+  });
+  const difCaj=disponible?(disponible-(totRealV+totRealP)-sobrante):0;
+
+  setText('r-facturado','$'+fmt(totPrevD));
+  setText('r-real','$'+fmt(totRealD));
+  setText('r-efectivo','$'+fmt(efectivo));
+  setText('r-gastos','$'+fmt(gastos));
+  setText('r-creditos','$'+fmt(creditos));
+  setText('r-entregar','$'+fmt(entregar));
+  setText('r-dif-ef','$'+fmt(difEf));
+  setText('r-disponible',disponible||'—');
+  setText('r-caj-prev',items.reduce((a,x)=>a+x.p.cajas+x.p.promo,0));
+  setText('r-caj-real',totRealV+totRealP);
+  setText('r-dif-caj',cargadas?difCaj:'—');
+
+  const dRow=document.getElementById('r-dif-ef-row');
+  dRow.className='resumen-row '+(difEf===0?'diff-ok':difEf!==0?'diff-neg':'');
+  const cRow=document.getElementById('r-dif-caj-row');
+  cRow.className='resumen-row '+(cargadas&&difCaj===0?'diff-ok':cargadas&&difCaj!==0?'diff-neg':'');
+
+  // Save gastos to local
+  cuadreLocal.gastos={ayudante,combustible,peaje,otros,anterior,cargadas,sobrante,efectivo,creditos};
+  renderZonaResumen();
+  renderPagoSummary();
+}
+
+async function guardarCuadre(){
+  if(!activeCamId) return;
+  cuadres[activeCamId]=JSON.parse(JSON.stringify(cuadreLocal));
+  try{
+    await guardarBin();
+    showToast('Cuadre guardado ✓');
+    renderDashboard();
+  }catch(e){showToast('Error al guardar');console.error(e);}
+}
+
+/* ── NAVIGATION ── */
+function mostrarScreen(name){
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.getElementById('screen-'+name).classList.add('active');
+  window.scrollTo(0,0);
+}
+function volverDashboard(){activeCamId=null;mostrarScreen('dashboard');renderDashboard();}
+
+/* ── UTILS ── */
+/* ── TIPO DE PAGO ── */
+function setTipoPago(i, tipo){
+  if(!cuadreLocal['c'+i]) cuadreLocal['c'+i]={};
+  cuadreLocal['c'+i].tipoPago=tipo;
+  // Update button styles
+  ['efectivo','transferencia','credito'].forEach(t=>{
+    const el=document.getElementById('tp-'+t.slice(0,2)+'-'+i);
+    if(!el) return;
+    el.className='pago-btn'+(tipo===t?' sel-'+t.slice(0,2):'');
+  });
+  // For credito, auto-set cobrado to 0 if empty
+  const cbEl=document.getElementById('cb-'+i);
+  if(tipo==='credito'&&cbEl&&cbEl.value==='') cbEl.value='0';
+  recalcResumen();
+  renderZonaResumen();
+}
+
+function renderPagoSummary(){
+  const items=getItemsCam(activeCamId);
+  let efV=0,efD=0, trV=0,trD=0, crV=0,crD=0;
+  items.forEach((x,i)=>{
+    const ci=cuadreLocal['c'+i]||{};
+    const rV=ci.realCajas!==undefined?ci.realCajas:x.p.cajas;
+    const rD=rV*x.p.precio;
+    const tipo=ci.tipoPago||'efectivo';
+    if(tipo==='efectivo')     {efV++;efD+=rD;}
+    else if(tipo==='transferencia'){trV++;trD+=rD;}
+    else if(tipo==='credito') {crV++;crD+=rD;}
+  });
+  const cont=document.getElementById('pago-summary-cont');
+  if(!cont) return;
+  cont.innerHTML=`
+    <div class="pago-summary">
+      <div class="pago-box pago-box-ef">
+        <div class="pago-box-val">${efV}</div>
+        <div class="pago-box-lab">Efectivo</div>
+        <div class="pago-box-sub">$${fmt(efD)}</div>
+      </div>
+      <div class="pago-box pago-box-tr">
+        <div class="pago-box-val">${trV}</div>
+        <div class="pago-box-lab">Transfer.</div>
+        <div class="pago-box-sub">$${fmt(trD)}</div>
+      </div>
+      <div class="pago-box pago-box-cr">
+        <div class="pago-box-val">${crV}</div>
+        <div class="pago-box-lab">Crédito</div>
+        <div class="pago-box-sub">$${fmt(crD)}</div>
+      </div>
+    </div>`;
+}
+
+/* ── RESUMEN POR ZONA ── */
+function renderZonaResumen(){
+  const items=getItemsCam(activeCamId);
+  if(!items.length&&!(cuadreLocal.extras||[]).length){document.getElementById('zona-resumen').textContent='—';return;}
+
+  // Add extras to zona grouping
+  (cuadreLocal.extras||[]).forEach((ex,i)=>{
+    const z=ex.zona||'Extra';
+    if(!zonas[z]) zonas[z]={prevV:0,prevP:0,prevD:0,realV:0,realP:0,realD:0};
+    zonas[z].realV+=ex.cajas; zonas[z].realP+=ex.promo; zonas[z].realD+=ex.cajas*ex.precio;
+  });
+  // Group by zona
+  const zonas={};
+  items.forEach((x,i)=>{
+    const z=x.zona||'Sin zona';
+    if(!zonas[z]) zonas[z]={prevV:0,prevP:0,prevD:0,realV:0,realP:0,realD:0};
+    const ci=cuadreLocal['c'+i]||{};
+    const rV=ci.realCajas!==undefined?ci.realCajas:x.p.cajas;
+    const rP=ci.realProm!==undefined?ci.realProm:x.p.promo;
+    const rD=rV*x.p.precio;
+    zonas[z].prevV+=x.p.cajas;
+    zonas[z].prevP+=x.p.promo;
+    zonas[z].prevD+=x.p.total;
+    zonas[z].realV+=rV;
+    zonas[z].realP+=rP;
+    zonas[z].realD+=rD;
+  });
+
+  const names=Object.keys(zonas).sort();
+  let totPrevV=0,totPrevP=0,totPrevD=0,totRealV=0,totRealP=0,totRealD=0;
+
+  const rows=names.map(z=>{
+    const d=zonas[z];
+    totPrevV+=d.prevV; totPrevP+=d.prevP; totPrevD+=d.prevD;
+    totRealV+=d.realV; totRealP+=d.realP; totRealD+=d.realD;
+    const totR=d.realV+d.realP;
+    const prom=totR>0?Math.round(d.realD/totR):0;
+    const promPrev=((d.prevV+d.prevP)>0)?Math.round(d.prevD/(d.prevV+d.prevP)):0;
+    const promDiff=prom!==promPrev;
+    return`<tr>
+      <td>${esc(z)}</td>
+      <td>${d.realV}<span style="font-size:10px;color:var(--muted)"> (${d.prevV})</span></td>
+      <td>${d.realP}<span style="font-size:10px;color:var(--muted)"> (${d.prevP})</span></td>
+      <td style="font-weight:700">$${fmt(d.realD)}<span style="font-size:10px;color:var(--muted);display:block">($${fmt(d.prevD)})</span></td>
+      <td><span class="prom-pill${promDiff?' diff':''}" title="Prev: $${promPrev}">$${prom}</span></td>
+    </tr>`;
+  }).join('');
+
+  const totR=totRealV+totRealP;
+  const promTot=totR>0?Math.round(totRealD/totR):0;
+
+  document.getElementById('zona-resumen').innerHTML=`
+    <div style="font-size:11px;color:var(--muted);margin-bottom:6px">Real (Preventa) · Precio promedio = $ total ÷ (V+P)</div>
+    <table class="zona-table">
+      <thead><tr>
+        <th>Zona</th><th>Vendidas V</th><th>Promo P</th><th>Total $</th><th>$/cj prom</th>
+      </tr></thead>
+      <tbody>${rows}</tbody>
+      <tfoot><tr>
+        <td>TOTAL</td>
+        <td>${totRealV} <span style="opacity:.7;font-size:10px">(${totPrevV})</span></td>
+        <td>${totRealP} <span style="opacity:.7;font-size:10px">(${totPrevP})</span></td>
+        <td>$${fmt(totRealD)} <span style="opacity:.7;font-size:10px">($${fmt(totPrevD)})</span></td>
+        <td>$${promTot}</td>
+      </tr></tfoot>
+    </table>`;
+}
+
+function fmtFecha(f){
+  if(!f) return '—';
+  const [y,m,d]=f.split('-');
+  const M=['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+  return d+'/'+M[+m-1]+'/'+y;
+}
+function fmt(n){return Number(n).toLocaleString('es-DO');}
+function esc(s){if(!s)return'';const d=document.createElement('div');d.textContent=s;return d.innerHTML;}
+function setText(id,v){const e=document.getElementById(id);if(e)e.textContent=v;}
+function exportarExcel(){
+  if(!activeCamId){showToast('Abre un cuadre primero');return;}
+  const cam=cams.find(c=>c.id===activeCamId);
+  if(!cam){showToast('Camión no encontrado');return;}
+
+  const items=getItemsCam(activeCamId);
+  if(!items.length){showToast('Sin clientes asignados');return;}
+
+  const g=cuadreLocal.gastos||{};
+  const fecha=cam.fechaAsignacion||new Date().toISOString().slice(0,10);
+  const [fy,fm,fd]=fecha.split('-');
+  const dias=['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];
+  const diaSem=dias[new Date(fecha+'T12:00:00').getDay()];
+  const mesesN=['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+  const fechaStr=fd+'/'+mesesN[+fm-1]+'/'+fy;
+  const numAsig=cam.asignacionId||(cam.nombre+'-'+fecha.replace(/-/g,''));
+
+  // Aggregate real totals
+  let totRealV=0,totRealP=0,totRealD=0;
+  // Per-zone aggregates
+  const zonaMap={};
+  items.forEach((x,i)=>{
+    const ci=cuadreLocal['c'+i]||{};
+    const rV=ci.realCajas!==undefined?ci.realCajas:x.p.cajas;
+    const rP=ci.realProm!==undefined?ci.realProm:x.p.promo;
+    const rD=rV*x.p.precio;
+    totRealV+=rV; totRealP+=rP; totRealD+=rD;
+    const z=x.zona||'Sin zona';
+    if(!zonaMap[z]) zonaMap[z]={vd:0,vcaj:0,vprom:0};
+    zonaMap[z].vd+=rD; zonaMap[z].vcaj+=rV; zonaMap[z].vprom+=rP;
+  });
+
+  const priceProm=totRealV>0?Math.round(totRealD/totRealV*100)/100:0;
+
+  // ── Build tab-separated row matching DATA columns exactly
+  // id_cols: Fecha, Mes, Año, Dia_Semana, ID_Cuadre, Camion, Zona_Principal
+  const zonaPrincipal=[...new Set(items.map(x=>x.zona))].join('+');
+  const row=[
+    fechaStr,                          // Fecha
+    +fm,                               // Mes
+    +fy,                               // Año
+    diaSem,                            // Dia_Semana
+    numAsig,                           // ID_Cuadre
+    cam.nombre,                        // Camion
+    zonaPrincipal,                     // Zona_Principal
+    // inv_cols
+    g.anterior||0,                     // Sobrante_Anterior
+    items.reduce((a,x)=>a+x.p.cajas,0),// Cajas_Compradas (preventa)
+    '',                                // Precio_Compra_Unitario (fill in Excel)
+    '',                                // Costo_Compra_Total (fill in Excel)
+    g.sobrante||0,                     // Sobrante_Final
+  ];
+
+  // Ventas por zona — 13 zonas × 3 cols
+  const ZONAS=['Zona 1','Zona 2','Zona 3','Zona 4','Zona 5','Zona 6',
+               'Zona 7','Zona 8','Zona 9','Zona 10','Zona 11','Zona 12','Zona 13'];
+  ZONAS.forEach(z=>{
+    const d=zonaMap[z]||{vd:0,vcaj:0,vprom:0};
+    row.push(d.vd||0, d.vcaj||0, d.vprom||0);
+  });
+
+  // vtot_cols
+  row.push(totRealD, totRealV, totRealP, priceProm);
+
+  // sis_cols
+  row.push('','','');  // Cajas_Sistema, Venta_Sistema_$, Recupero — manual
+
+  // cobro_cols
+  row.push(g.efectivo||0, g.transferencias||0, g.creditos||0, g.transferencias||0);
+
+  // gruta_cols
+  row.push(
+    g.combustible||0, g.peaje||0, g.ayudante||0, 0,  // G_Combustible,Peaje,Ayudante,Mantenimiento
+    0,                                                  // G_Descuadre
+    g.otros||0,                                        // G_Otros_Ruta
+    (+(g.combustible||0))+(+(g.peaje||0))+(+(g.ayudante||0))+(+(g.otros||0)) // Total_Gastos_Ruta
+  );
+
+  // gofic_cols — office expenses not captured in cuadre, leave blank
+  row.push(0,0,0,0,0,0,0);  // G_Luz,Internet,Alquiler,Nomina,Seguros,Misc,Total_Gastos_Oficina
+
+  // bal_cols
+  row.push('','','','',''); // Comisiones,Retiros,Pagos_Facturas,Otros_Ingresos,Notas
+
+  // ── Format output
+  const tsv=row.map(v=>{
+    if(v===''||v===null||v===undefined) return '';
+    if(typeof v==='number') return v.toString();
+    return String(v).replace(/	/g,' ');
+  }).join('	');
+
+  // ── Build human-readable export panel
+  const h=new Date().toLocaleTimeString('es-DO',{hour:'2-digit',minute:'2-digit'});
+  const zonaLines=Object.entries(zonaMap).map(([z,d])=>{
+    return '  '+z+': V:'+d.vcaj+' P:'+d.vprom+' $'+fmt(d.vd||0);
+  }).join('\n');
+
+  const resumen=
+    `=== FILA PARA DATA — ${numAsig} ===
+`+
+    `Fecha: ${fechaStr} | Mes: ${+fm} | Año: ${+fy} | ${diaSem}
+`+
+    `Camión: ${cam.nombre} | Zonas: ${zonaPrincipal}
+`+
+    `─────────────────────────────────
+`+
+    `INVENTARIO
+`+
+    `  Sobrante anterior: ${g.anterior||0}
+`+
+    `  Sobrante final:    ${g.sobrante||0}
+`+
+    `VENTAS REALES
+`+
+    `  Cajas vendidas: ${totRealV} | Promo: ${totRealP}
+`+
+    `  Total $: $${fmt(totRealD)} | $/cj prom: $${fmt(priceProm)}
+`+
+    `POR ZONA:
+${zonaLines}
+`+
+    `COBROS
+`+
+    `  Efectivo: $${fmt(g.efectivo||0)}
+`+
+    `  Transferencia: $${fmt(g.transferencias||0)}
+`+
+    `  Crédito/Pendiente: $${fmt(g.creditos||0)}
+`+
+    `GASTOS RUTA
+`+
+    `  Combustible: $${fmt(g.combustible||0)}
+`+
+    `  Peaje: $${fmt(g.peaje||0)}
+`+
+    `  Ayudante: $${fmt(g.ayudante||0)}
+`+
+    `  Otros: $${fmt(g.otros||0)}
+`+
+    `─────────────────────────────────
+`+
+    `⚠ Precio compra, Gastos Oficina, Sistema Paralelo,
+`+
+    `  Comisiones y Retiros: completar en Excel.
+
+`+
+    `[FILA TSV — PEGAR EN DATA]
+`+tsv;
+
+  // Show export modal
+  mostrarExportModal(resumen, tsv);
+}
+
+function mostrarExportModal(resumen, tsv){
+  const existing=document.getElementById('export-modal');
+  if(existing) existing.remove();
+
+  const modal=document.createElement('div');
+  modal.id='export-modal';
+  modal.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:600;display:flex;align-items:flex-end;justify-content:center';
+  modal.innerHTML=`
+    <div style="background:white;border-radius:16px 16px 0 0;padding:20px 16px;width:100%;max-height:85vh;overflow-y:auto">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+        <div style="font-size:16px;font-weight:700;color:var(--azul)">📊 Exportar para Excel</div>
+        <button onclick="document.getElementById('export-modal').remove()"
+          style="background:none;border:none;font-size:24px;color:var(--muted);cursor:pointer">×</button>
+      </div>
+      <div style="font-size:12px;color:var(--muted);margin-bottom:8px">
+        Resumen del cuadre. Los campos en ⚠ se completan manualmente en Excel.
+      </div>
+      <div id="export-resumen" style="background:var(--gris);border:1px solid var(--borde);border-radius:8px;
+        padding:12px;font-size:11px;font-family:'Courier New',monospace;white-space:pre-wrap;
+        word-break:break-word;max-height:38vh;overflow-y:auto;margin-bottom:12px">${resumen}</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
+        <button onclick="copiarTSV()" style="padding:13px;border:none;border-radius:10px;
+          background:var(--azul);color:white;font-size:14px;font-weight:700;cursor:pointer">
+          📋 Copiar fila TSV
+        </button>
+        <button onclick="copiarResumenExport()" style="padding:13px;border:none;border-radius:10px;
+          background:#166534;color:white;font-size:14px;font-weight:700;cursor:pointer">
+          📄 Copiar resumen
+        </button>
+      </div>
+      <div style="font-size:12px;color:var(--muted);background:#fef3c7;border-radius:8px;padding:10px">
+        <strong>Cómo pegarlo en Excel:</strong><br>
+        1. Abre el Excel → hoja <strong>DATA</strong><br>
+        2. Haz clic en la primera celda de la próxima fila vacía (columna A)<br>
+        3. Pega con <strong>Ctrl+V</strong> — los datos llenan todas las columnas automáticamente<br>
+        4. Completa los campos en blanco (precio compra, sistema paralelo, etc.)
+      </div>
+    </div>`;
+
+  // Store tsv for copy buttons
+  modal._tsv = tsv;
+  window._exportTSV = tsv;
+  window._exportResumen = document.getElementById ? resumen : '';
+  document.body.appendChild(modal);
+}
+
+function copiarTSV(){
+  const txt=window._exportTSV||'';
+  if(navigator.clipboard) navigator.clipboard.writeText(txt).then(()=>showToast('Fila TSV copiada ✓'));
+  else{const t=document.createElement('textarea');t.value=txt;t.style.position='fixed';t.style.opacity='0';document.body.appendChild(t);t.select();document.execCommand('copy');document.body.removeChild(t);showToast('Fila TSV copiada ✓');}
+}
+
+function copiarResumenExport(){
+  const txt=document.getElementById('export-resumen')?.textContent||'';
+  if(navigator.clipboard) navigator.clipboard.writeText(txt).then(()=>showToast('Resumen copiado ✓'));
+  else{const t=document.createElement('textarea');t.value=txt;t.style.position='fixed';t.style.opacity='0';document.body.appendChild(t);t.select();document.execCommand('copy');document.body.removeChild(t);showToast('Resumen copiado ✓');}
+}
+
+/* ── EXTRAS ── */
+function renderExtras(){
+  const cont=document.getElementById('extras-list');
+  if(!cont) return;
+  const extras=cuadreLocal.extras||[];
+  if(!extras.length){ cont.innerHTML=''; return; }
+  
+  cont.innerHTML=extras.map((ex,i)=>`
+    <div class="extra-row" id="ex-${i}">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px">
+        <div>
+          <strong style="font-size:14px">${esc(ex.cliente)}</strong>
+          <span style="background:#ede9fe;color:#4c1d95;font-size:10px;font-weight:700;padding:2px 6px;border-radius:10px;margin-left:4px">EXTRA</span>
+          <div style="font-size:11px;color:var(--muted);margin-top:2px">${esc(ex.zona||'')} · $${ex.precio}/cj</div>
+        </div>
+        <button onclick="quitarExtra(${i})" style="background:var(--rojo-bg);color:var(--rojo);border:none;border-radius:6px;padding:4px 10px;font-size:12px;font-weight:600;cursor:pointer">× Quitar</button>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-bottom:6px">
+        <div>
+          <div style="font-size:10px;font-weight:700;color:var(--azul);text-transform:uppercase;margin-bottom:2px">Cajas</div>
+          <input class="campo-input" type="number" min="0" value="${ex.cajas}" style="text-align:center"
+            oninput="updateExtra(${i},'cajas',+this.value)">
+        </div>
+        <div>
+          <div style="font-size:10px;font-weight:700;color:var(--azul);text-transform:uppercase;margin-bottom:2px">Promo</div>
+          <input class="campo-input" type="number" min="0" value="${ex.promo}" style="text-align:center"
+            oninput="updateExtra(${i},'promo',+this.value)">
+        </div>
+        <div>
+          <div style="font-size:10px;font-weight:700;color:var(--azul);text-transform:uppercase;margin-bottom:2px">Cobrado $</div>
+          <input class="campo-input" type="number" min="0" value="${ex.cobrado||''}" placeholder="${ex.cajas*ex.precio}"
+            oninput="updateExtra(${i},'cobrado',+this.value)">
+        </div>
+      </div>
+      <div class="pago-btns" style="margin-bottom:6px">
+        <div class="pago-btn${(ex.tipoPago||'efectivo')==='efectivo'?' sel-ef':''}" onclick="updateExtra(${i},'tipoPago','efectivo')">💵 Efectivo</div>
+        <div class="pago-btn${ex.tipoPago==='transferencia'?' sel-tr':''}" onclick="updateExtra(${i},'tipoPago','transferencia')">🏦 Transfer.</div>
+        <div class="pago-btn${ex.tipoPago==='credito'?' sel-cr':''}" onclick="updateExtra(${i},'tipoPago','credito')">📋 Crédito</div>
+      </div>
+      <input type="text" class="obs-input" placeholder="Observación..." value="${esc(ex.obs||'')}"
+        oninput="updateExtra(${i},'obs',this.value)">
+    </div>`).join('');
+
+}
+
+function agregarExtra(){
+  const cliente=document.getElementById('ex-cliente')?.value.trim();
+  const cajas=+(document.getElementById('ex-cajas')?.value)||0;
+  const promo=+(document.getElementById('ex-promo')?.value)||0;
+  const precio=+(document.getElementById('ex-precio')?.value)||0;
+  const zona=document.getElementById('ex-zona')?.value.trim()||'Extra';
+  if(!cliente){ showToast('Escribe el nombre del cliente'); return; }
+  if(!cajas&&!promo){ showToast('Ingresa al menos una caja'); return; }
+  if(!cuadreLocal.extras) cuadreLocal.extras=[];
+  cuadreLocal.extras.push({
+    cliente, cajas, promo, precio, zona,
+    cobrado:'', tipoPago:'efectivo', estado:'entregado', obs:''
+  });
+  // Clear inputs
+  ['ex-cliente','ex-cajas','ex-promo','ex-precio','ex-zona'].forEach(id=>{
+    const el=document.getElementById(id); if(el) el.value='';
+  });
+  renderExtras();
+  recalcTotales(getItemsCam(activeCamId));
+  recalcResumen();
+  showToast('Cliente extra agregado ✓');
+}
+
+function updateExtra(i, field, val){
+  if(!cuadreLocal.extras||!cuadreLocal.extras[i]) return;
+  cuadreLocal.extras[i][field]=val;
+  if(field==='tipoPago') renderExtras();
+  recalcTotales(getItemsCam(activeCamId));
+  recalcResumen();
+}
+
+function quitarExtra(i){
+  if(!cuadreLocal.extras) return;
+  cuadreLocal.extras.splice(i,1);
+  renderExtras();
+  recalcTotales(getItemsCam(activeCamId));
+  recalcResumen();
+}
+
+function showToast(m){const t=document.getElementById('toast');t.textContent=m;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2500);}
+
+</script>
+<div id="app-version">Cuadre v1.20260420</div>
+</body>
+</html>
