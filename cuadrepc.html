@@ -818,13 +818,12 @@ function recalcTotales(items){
     const rV=ci.realCajas!==undefined?ci.realCajas:x.p.cajas;
     const rP=ci.realProm!==undefined?ci.realProm:x.p.promo;
     realV+=rV; realP+=rP; realD+=rV*x.p.precio;
-    cobrado+=+(ci.cobrado||0);
+    cobrado+=ci.cobrado!==undefined&&ci.cobrado!==''?+ci.cobrado:0;
   });
-  // Add extras to totals
-  const extras=cuadreLocal.extras||[];
-  extras.forEach(ex=>{
+  // Include extras
+  (cuadreLocal.extras||[]).forEach(ex=>{
     realV+=ex.cajas; realP+=ex.promo; realD+=ex.cajas*ex.precio;
-    cobrado+=+(ex.cobrado||0);
+    cobrado+=ex.cobrado!==undefined&&ex.cobrado!==''?+ex.cobrado:0;
   });
   const s=(id,v)=>{const e=document.getElementById(id);if(e)e.textContent=v;};
   s('tot-prev-v',prevV); s('tot-prev-p',prevP);
@@ -837,6 +836,9 @@ function recalcTotales(items){
 
 function recalcResumen(){
   const items=getItemsCam(activeCamId);
+  const extras=cuadreLocal.extras||[];
+
+  // ── Totals from assigned clients
   let totPrevD=0, totRealD=0;
   items.forEach((x,i)=>{
     totPrevD+=x.p.total;
@@ -844,7 +846,10 @@ function recalcResumen(){
     const rC=ci.realCajas!==undefined?ci.realCajas:x.p.cajas;
     totRealD+=rC*x.p.precio;
   });
+  // Add extras to real totals
+  extras.forEach(ex=>{ totRealD+=ex.cajas*ex.precio; });
 
+  // ── Gastos from sidebar
   const ayudante   =+(document.getElementById('g-ayudante').value)||0;
   const combustible=+(document.getElementById('g-combustible').value)||0;
   const peaje      =+(document.getElementById('g-peaje').value)||0;
@@ -855,108 +860,100 @@ function recalcResumen(){
   const efectivo   =+(document.getElementById('g-efectivo').value)||0;
   const creditos   =+(document.getElementById('g-creditos').value)||0;
 
-  const disponible = anterior + cargadas;
+  const disponible=anterior+cargadas;
   const dispEl=document.getElementById('g-disponible');
-  if(dispEl) dispEl.value = disponible || '';
+  if(dispEl) dispEl.value=disponible||'';
 
-  const gastos = ayudante + combustible + peaje + otros;
+  const gastos=ayudante+combustible+peaje+otros;
 
-  // Pago breakdown
-  const items2=getItemsCam(activeCamId);
+  // ── Pago breakdown — use COBRADO field when filled, otherwise use real venta
   let sumEf=0, sumTr=0, sumCr=0;
-  // Include extras in pago breakdown
-  (cuadreLocal.extras||[]).forEach(ex=>{
-    const rD2=ex.cajas*ex.precio;
-    const tipo=ex.tipoPago||'efectivo';
-    if(tipo==='transferencia') sumTr+=rD2;
-    else if(tipo==='credito')  sumCr+=rD2;
-    else                       sumEf+=rD2;
-  });
-  items2.forEach((x,i2)=>{
+  items.forEach((x,i2)=>{
     const ci2=cuadreLocal['c'+i2]||{};
     const rV2=ci2.realCajas!==undefined?ci2.realCajas:x.p.cajas;
     const rD2=rV2*x.p.precio;
+    // Use cobrado value if entered, otherwise use venta real
+    const cobradoVal=ci2.cobrado!==undefined&&ci2.cobrado!==''?+ci2.cobrado:rD2;
     const tipo=ci2.tipoPago||'efectivo';
-    if(tipo==='transferencia') sumTr+=rD2;
-    else if(tipo==='credito')  sumCr+=rD2;
-    else                       sumEf+=rD2;
+    if(tipo==='transferencia') sumTr+=cobradoVal;
+    else if(tipo==='credito')  sumCr+=cobradoVal;
+    else                       sumEf+=cobradoVal;
   });
+  // Add extras to pago breakdown
+  extras.forEach(ex=>{
+    const cobradoVal=ex.cobrado!==undefined&&ex.cobrado!==''?+ex.cobrado:ex.cajas*ex.precio;
+    const tipo=ex.tipoPago||'efectivo';
+    if(tipo==='transferencia') sumTr+=cobradoVal;
+    else if(tipo==='credito')  sumCr+=cobradoVal;
+    else                       sumEf+=cobradoVal;
+  });
+
   setText('r-ef-neto','RD$'+fmtD(sumEf));
   setText('r-tr-neto','RD$'+fmtD(sumTr));
   setText('r-cr-neto','RD$'+fmtD(sumCr));
 
-  // Core balance logic:
-  // efectivo = cash physically received from driver
-  // Venta real = totRealD
-  // gastos are deducted FROM the sale to get what should have been delivered
-  // expected_to_caja = totRealD - gastos - creditos - sumTr
-  // difference = efectivo - expected_to_caja
-  const expectedCaja = totRealD - gastos - creditos - sumTr;
-  const difEf = efectivo - expectedCaja;
+  // ── Balance: expectedCaja = venta real - gastos - creditos - transferencias
+  const expectedCaja=totRealD-gastos-creditos-sumTr;
+  const difEf=efectivo-expectedCaja;
 
-  // Cajas
+  // ── Cajas totals — include extras
   let totRealV=0, totRealP=0;
-  items2.forEach((x,i2)=>{
+  items.forEach((x,i2)=>{
     const ci2=cuadreLocal['c'+i2]||{};
     totRealV+=ci2.realCajas!==undefined?ci2.realCajas:x.p.cajas;
     totRealP+=ci2.realProm!==undefined?ci2.realProm:x.p.promo;
   });
-  const difCaj = disponible ? disponible-(totRealV+totRealP)-sobrante : 0;
+  extras.forEach(ex=>{ totRealV+=ex.cajas; totRealP+=ex.promo; });
 
+  const difCaj=disponible?(disponible-(totRealV+totRealP)-sobrante):0;
+
+  // ── Update sidebar display
   setText('r-facturado','RD$'+fmtD(totPrevD));
   setText('r-real','RD$'+fmtD(totRealD));
   setText('r-efectivo','RD$'+fmtD(efectivo));
   setText('r-gastos','RD$'+fmtD(gastos));
   setText('r-creditos','RD$'+fmtD(creditos));
   setText('r-entregar','RD$'+fmtD(expectedCaja));
-  setText('r-disponible', disponible ? disponible : '—');
-  setText('r-caj-prev', items2.reduce((a,x)=>a+x.p.cajas+x.p.promo,0));
-  setText('r-caj-real', totRealV+totRealP);
+  setText('r-disponible',disponible?disponible:'—');
+  setText('r-caj-prev',items.reduce((a,x)=>a+x.p.cajas+x.p.promo,0));
+  setText('r-caj-real',totRealV+totRealP);
 
-  // Color coding efectivo diff
+  // ── Color: efectivo diff
   const difEfEl=document.getElementById('r-dif-ef');
   const difEfRow=document.getElementById('r-dif-ef-row');
   if(difEfEl){
     difEfEl.textContent='RD$'+fmtD(difEf);
     if(difEf===0){
-      difEfEl.style.color='var(--verde)'; difEfEl.style.fontWeight='700';
-      if(difEfRow) difEfRow.className='res-row diff-ok';
+      difEfEl.style.color='var(--verde)';difEfEl.style.fontWeight='700';
+      if(difEfRow){difEfRow.className='res-row diff-ok';difEfRow.style.color='';}
     } else if(difEf>0){
-      // Sobrante de dinero — naranja
-      difEfEl.style.color='#d97706'; difEfEl.style.fontWeight='700';
-      if(difEfRow) difEfRow.className='res-row';
-      difEfRow.style.color='#d97706';
-    } else if(difEf<0 && Math.abs(difEf)<=100){
-      // Faltante pequeño (<= RD$100) — naranja
-      difEfEl.style.color='#d97706'; difEfEl.style.fontWeight='700';
-      if(difEfRow) difEfRow.className='res-row';
-      if(difEfRow) difEfRow.style.color='#d97706';
+      difEfEl.style.color='#d97706';difEfEl.style.fontWeight='700';
+      if(difEfRow){difEfRow.className='res-row';difEfRow.style.color='#d97706';}
+    } else if(Math.abs(difEf)<=100){
+      difEfEl.style.color='#d97706';difEfEl.style.fontWeight='700';
+      if(difEfRow){difEfRow.className='res-row';difEfRow.style.color='#d97706';}
     } else {
-      // Faltante > RD$100 — rojo
-      difEfEl.style.color='var(--rojo)'; difEfEl.style.fontWeight='700';
-      if(difEfRow) difEfRow.className='res-row diff-neg';
-      if(difEfRow) difEfRow.style.color='';
+      difEfEl.style.color='var(--rojo)';difEfEl.style.fontWeight='700';
+      if(difEfRow){difEfRow.className='res-row diff-neg';difEfRow.style.color='';}
     }
   }
 
-  // Color coding cajas diff
+  // ── Color: cajas diff
   const difCajEl=document.getElementById('r-dif-caj');
   const difCajRow=document.getElementById('r-dif-caj-row');
   if(difCajEl){
-    difCajEl.textContent=disponible ? difCaj : '—';
+    difCajEl.textContent=disponible?difCaj:'—';
     if(!disponible){
       if(difCajRow) difCajRow.className='res-row';
     } else if(difCaj===0){
-      difCajEl.style.color='var(--verde)'; difCajEl.style.fontWeight='700';
-      if(difCajRow) difCajRow.className='res-row diff-ok';
+      difCajEl.style.color='var(--verde)';difCajEl.style.fontWeight='700';
+      if(difCajRow){difCajRow.className='res-row diff-ok';difCajRow.style.color='';}
     } else if(difCaj<0){
-      // Faltante de cajas — rojo
-      difCajEl.style.color='var(--rojo)'; difCajEl.style.fontWeight='700';
-      if(difCajRow){ difCajRow.className='res-row diff-neg'; difCajRow.style.color='';}
+      difCajEl.style.color='var(--rojo)';difCajEl.style.fontWeight='700';
+      if(difCajRow){difCajRow.className='res-row diff-neg';difCajRow.style.color='';}
     } else {
-      // Sobrante de cajas — naranja
-      difCajEl.style.color='#d97706'; difCajEl.style.fontWeight='700';
-      if(difCajRow){ difCajRow.className='res-row'; difCajRow.style.color='#d97706';}
+      difCajEl.style.color='#d97706';difCajEl.style.fontWeight='700';
+      if(difCajRow){difCajRow.className='res-row';difCajRow.style.color='#d97706';}
     }
   }
 
@@ -1041,14 +1038,14 @@ function renderZonaResumen(){
   const items=getItemsCam(activeCamId);
   if(!items.length&&!(cuadreLocal.extras||[]).length){document.getElementById('zona-resumen').textContent='—';return;}
 
+  // Group by zona (declare first so extras can use it too)
+  const zonas={};
   // Add extras to zona grouping
   (cuadreLocal.extras||[]).forEach((ex,i)=>{
     const z=ex.zona||'Extra';
     if(!zonas[z]) zonas[z]={prevV:0,prevP:0,prevD:0,realV:0,realP:0,realD:0};
     zonas[z].realV+=ex.cajas; zonas[z].realP+=ex.promo; zonas[z].realD+=ex.cajas*ex.precio;
   });
-  // Group by zona
-  const zonas={};
   items.forEach((x,i)=>{
     const z=x.zona||'Sin zona';
     if(!zonas[z]) zonas[z]={prevV:0,prevP:0,prevD:0,realV:0,realP:0,realD:0};
