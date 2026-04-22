@@ -437,13 +437,23 @@ async function guardarBin(){
 }
 
 /* ── DASHBOARD ── */
-function renderDashboard(allSubsParam, allAsigParam){
-  const _subs=allSubsParam||allSubs;
-  const _asig=allAsigParam||allSubs;
+function renderDashboard(){
   const cont=document.getElementById('dashboard-list');
-  // Find cams that have assigned clients
+
+  // Find cams that have ANY client assigned with fechaEntrega === jornadaActiva
+  // Must search across ALL jornadas in binCache (same logic as getItemsCam)
   const activeCams = cams.filter(cam=>{
-    return Object.keys(asig).some(k=>(asig[k]&&asig[k].camionId===cam.id)||asig[k]===cam.id);
+    if(!binCache.jornadas) return false;
+    return Object.keys(binCache.jornadas).some(fecha=>{
+      const j=binCache.jornadas[fecha];
+      if(!j.asignaciones) return false;
+      return Object.keys(j.asignaciones).some(k=>{
+        const a=j.asignaciones[k];
+        const aCamId=a&&a.camionId?a.camionId:a;
+        const aFecha=a&&a.fechaEntrega?a.fechaEntrega:fecha;
+        return aCamId===cam.id && aFecha===jornadaActiva;
+      });
+    });
   });
 
   if(!activeCams.length){
@@ -460,19 +470,18 @@ function renderDashboard(allSubsParam, allAsigParam){
     const totPrevP=items.reduce((a,x)=>a+x.p.promo,0);
     const totPrevD=items.reduce((a,x)=>a+x.p.total,0);
     const cq=cuadres[cam.id]||{};
-    const hasCuadre=Object.keys(cq).length>0;
+    const hasCuadre=Object.keys(cq).length>1; // >1 because gastos obj may exist
 
-    // Status
     let statusClass='badge-pending', statusText='Pendiente';
     if(hasCuadre){
-      const difEf = calcDifEf(cam.id, cq);
-      const difCaj = calcDifCaj(cam.id, cq);
-      if(difEf===0 && difCaj===0){statusClass='badge-done';statusText='✓ Cuadrado';}
-      else{statusClass='badge-diff';statusText=`⚠ Diferencias`;}
+      const difEf=calcDifEf(cam.id,cq);
+      const difCaj=calcDifCaj(cam.id,cq);
+      if(difEf===0&&difCaj===0){statusClass='badge-done';statusText='✓ Cuadrado';}
+      else{statusClass='badge-diff';statusText='⚠ Diferencias';}
     }
 
-    const numAsig = cam.asignacionId || '—';
-    const fechaStr = cam.fechaAsignacion ? fmtFecha(cam.fechaAsignacion) : '—';
+    const numAsig=cam.asignacionId||'—';
+    const fechaStr=cam.fechaAsignacion?fmtFecha(cam.fechaAsignacion):'—';
 
     return`<div class="cam-card" onclick="abrirCuadre('${cam.id}')">
       <div class="cam-card-head">
