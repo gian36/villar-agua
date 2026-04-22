@@ -443,7 +443,7 @@ function limpiarJornadasViejas(bin, keepDays=45){
   Object.keys(bin.jornadas).forEach(f=>{ if(f<cut) delete bin.jornadas[f]; });
 }
 
-let subs={}, cams=[], asig={}, cuadres={}, jornadaActiva=hoy(), binCache={};
+let subs={}, allSubs={}, cams=[], asig={}, cuadres={}, jornadaActiva=hoy(), binCache={};
 let binData={};
 let activeCamId=null;
 // cuadreLocal: { clienteIdx: {realCajas, realProm, cobrado, obs}, gastos:{...}, cargadas, sobrante, efectivo, creditos }
@@ -482,21 +482,37 @@ function cambiarJornada(){
 }
 
 function cargarJornada(){
+  // Rebuild allSubs + allAsig from ALL jornadas (same as asignacion app)
+  allSubs={};
+  const allAsig={};
+  if(binCache.jornadas){
+    Object.keys(binCache.jornadas).forEach(fecha=>{
+      const j=binCache.jornadas[fecha];
+      if(j.pedidos){
+        Object.keys(j.pedidos).forEach(sid=>{
+          const gk=fecha+'__'+sid;
+          allSubs[gk]={...j.pedidos[sid], jornadaPedido:fecha};
+        });
+      }
+      if(j.asignaciones){
+        Object.keys(j.asignaciones).forEach(k=>{
+          allAsig[fecha+'__'+k]=j.asignaciones[k];
+        });
+      }
+    });
+  }
+
+  // subs/asig for selected jornada (for backward compat)
   const j=getJornada(binCache, jornadaActiva);
   subs=j.pedidos||{};
   asig=j.asignaciones||{};
   cuadres=j.cuadres||{};
+
   const info=document.getElementById('jornada-info');
-  const nAsig=Object.keys(asig).length;
-  if(info) info.textContent=fmtJornada(jornadaActiva)+' · '+Object.keys(subs).length+' preventas · '+nAsig+' asignaciones';
-  renderDashboard();
-  // Update stats
-  const _activeCams=(cams||[]).filter(cam=>Object.keys(asig).some(k=>(asig[k]&&(asig[k].camionId===cam.id||asig[k]===cam.id))));
-  const _totCli=Object.keys(subs).reduce((a,sid)=>a+subs[sid].pedidos.length,0);
-  const _totCaj=Object.keys(subs).reduce((a,sid)=>a+subs[sid].totalCajas+subs[sid].totalPromo,0);
-  const _sinAsig=Object.keys(subs).reduce((a,sid)=>a+subs[sid].pedidos.filter((_,i)=>!asig[sid+'__'+i]).length,0);
-  const _s=(id,v)=>{const e=document.getElementById(id);if(e)e.textContent=v;};
-  _s('st-prev',Object.keys(subs).length);_s('st-cli',_totCli);_s('st-caj',_totCaj);_s('st-sin',_sinAsig);
+  const nAsig=Object.keys(allAsig).length;
+  if(info) info.textContent=fmtJornada(jornadaActiva)+' · '+Object.keys(allSubs).length+' preventas · '+nAsig+' asignaciones';
+
+  renderDashboard(allSubs, allAsig);
 }
 
 async function diagnosticarConexion(){
@@ -541,14 +557,17 @@ async function diagnosticarConexion(){
 
 async function guardarBin(){
   limpiarJornadasViejas(binCache);
-  const j=getJornada(binCache, jornadaActiva);
-  j.cuadres=cuadres; j.pedidos=subs; j.asignaciones=asig;
-  setJornada(binCache, jornadaActiva, j);
+  // Save cuadres under the delivery date jornada
+  if(!binCache.jornadas) binCache.jornadas={};
+  if(!binCache.jornadas[jornadaActiva]) binCache.jornadas[jornadaActiva]={pedidos:{},asignaciones:{},cuadres:{}};
+  binCache.jornadas[jornadaActiva].cuadres=cuadres;
   await escribirBin(binCache);
 }
 
 /* ── DASHBOARD ── */
-function renderDashboard(){
+function renderDashboard(allSubsParam, allAsigParam){
+  const _subs=allSubsParam||allSubs;
+  const _asig=allAsigParam||allSubs;
   const cont=document.getElementById('dashboard-list');
   // Find cams that have assigned clients
   const activeCams = cams.filter(cam=>{
@@ -603,11 +622,25 @@ function renderDashboard(){
 
 function getItemsCam(camId){
   const items=[];
-  Object.keys(subs).forEach(sid=>{
-    subs[sid].pedidos.forEach((p,i)=>{
-      if((asig[sid+'__'+i]&&(asig[sid+'__'+i].camionId===camId||asig[sid+'__'+i]===camId))) items.push({p,zona:subs[sid].zona,sid,pi:i});
+  // Search across ALL jornadas for clients assigned to this camion for selected delivery date
+  if(binCache.jornadas){
+    Object.keys(binCache.jornadas).forEach(fecha=>{
+      const j=binCache.jornadas[fecha];
+      if(!j.pedidos||!j.asignaciones) return;
+      Object.keys(j.pedidos).forEach(sid=>{
+        const s=j.pedidos[sid];
+        s.pedidos.forEach((p,i)=>{
+          const a=j.asignaciones[sid+'__'+i];
+          if(!a) return;
+          const aCamId=a.camionId||a;
+          const aFecha=a.fechaEntrega||fecha;
+          if(aCamId===camId && aFecha===jornadaActiva){
+            items.push({p, zona:s.zona, sid, pi:i, jornadaPedido:fecha});
+          }
+        });
+      });
     });
-  });
+  }
   return items;
 }
 function getExtrasCam(camId){
