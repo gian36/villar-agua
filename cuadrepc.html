@@ -838,18 +838,39 @@ function recalcResumen(){
   const items=getItemsCam(activeCamId);
   const extras=cuadreLocal.extras||[];
 
-  // ── Totals from assigned clients
-  let totPrevD=0, totRealD=0;
+  // ── Per-client totals using COBRADO as source of truth
+  let totPrevD=0;
+  let sumEf=0, sumTr=0, sumCr=0;
+  let totRealV=0, totRealP=0, totRealD=0;
+
   items.forEach((x,i)=>{
     totPrevD+=x.p.total;
     const ci=cuadreLocal['c'+i]||{};
-    const rC=ci.realCajas!==undefined?ci.realCajas:x.p.cajas;
-    totRealD+=rC*x.p.precio;
+    const rV=ci.realCajas!==undefined?ci.realCajas:x.p.cajas;
+    const rP=ci.realProm!==undefined?ci.realProm:x.p.promo;
+    const rD=rV*x.p.precio; // calculated value
+    // cobrado: what was actually collected. Fall back to calculated if empty.
+    const cobradoVal=ci.cobrado!==undefined&&ci.cobrado!==''?+ci.cobrado:rD;
+    totRealV+=rV; totRealP+=rP;
+    totRealD+=cobradoVal; // use cobrado as real $
+    const tipo=ci.tipoPago||'efectivo';
+    if(tipo==='transferencia') sumTr+=cobradoVal;
+    else if(tipo==='credito')  sumCr+=cobradoVal;
+    else                       sumEf+=cobradoVal;
   });
-  // Add extras to real totals
-  extras.forEach(ex=>{ totRealD+=ex.cajas*ex.precio; });
 
-  // ── Gastos from sidebar
+  extras.forEach(ex=>{
+    const rD=ex.cajas*ex.precio;
+    const cobradoVal=ex.cobrado!==undefined&&ex.cobrado!==''?+ex.cobrado:rD;
+    totRealV+=ex.cajas; totRealP+=ex.promo;
+    totRealD+=cobradoVal;
+    const tipo=ex.tipoPago||'efectivo';
+    if(tipo==='transferencia') sumTr+=cobradoVal;
+    else if(tipo==='credito')  sumCr+=cobradoVal;
+    else                       sumEf+=cobradoVal;
+  });
+
+  // ── Gastos
   const ayudante   =+(document.getElementById('g-ayudante').value)||0;
   const combustible=+(document.getElementById('g-combustible').value)||0;
   const peaje      =+(document.getElementById('g-peaje').value)||0;
@@ -866,48 +887,18 @@ function recalcResumen(){
 
   const gastos=ayudante+combustible+peaje+otros;
 
-  // ── Pago breakdown — use COBRADO field when filled, otherwise use real venta
-  let sumEf=0, sumTr=0, sumCr=0;
-  items.forEach((x,i2)=>{
-    const ci2=cuadreLocal['c'+i2]||{};
-    const rV2=ci2.realCajas!==undefined?ci2.realCajas:x.p.cajas;
-    const rD2=rV2*x.p.precio;
-    // Use cobrado value if entered, otherwise use venta real
-    const cobradoVal=ci2.cobrado!==undefined&&ci2.cobrado!==''?+ci2.cobrado:rD2;
-    const tipo=ci2.tipoPago||'efectivo';
-    if(tipo==='transferencia') sumTr+=cobradoVal;
-    else if(tipo==='credito')  sumCr+=cobradoVal;
-    else                       sumEf+=cobradoVal;
-  });
-  // Add extras to pago breakdown
-  extras.forEach(ex=>{
-    const cobradoVal=ex.cobrado!==undefined&&ex.cobrado!==''?+ex.cobrado:ex.cajas*ex.precio;
-    const tipo=ex.tipoPago||'efectivo';
-    if(tipo==='transferencia') sumTr+=cobradoVal;
-    else if(tipo==='credito')  sumCr+=cobradoVal;
-    else                       sumEf+=cobradoVal;
-  });
-
   setText('r-ef-neto','RD$'+fmtD(sumEf));
   setText('r-tr-neto','RD$'+fmtD(sumTr));
   setText('r-cr-neto','RD$'+fmtD(sumCr));
 
-  // ── Balance: expectedCaja = venta real - gastos - creditos - transferencias
-  const expectedCaja=totRealD-gastos-creditos-sumTr;
+  // ── Balance
+  // expectedCaja = total cobrado (excl transfers & credits) - gastos
+  const expectedCaja=sumEf-gastos;
   const difEf=efectivo-expectedCaja;
-
-  // ── Cajas totals — include extras
-  let totRealV=0, totRealP=0;
-  items.forEach((x,i2)=>{
-    const ci2=cuadreLocal['c'+i2]||{};
-    totRealV+=ci2.realCajas!==undefined?ci2.realCajas:x.p.cajas;
-    totRealP+=ci2.realProm!==undefined?ci2.realProm:x.p.promo;
-  });
-  extras.forEach(ex=>{ totRealV+=ex.cajas; totRealP+=ex.promo; });
 
   const difCaj=disponible?(disponible-(totRealV+totRealP)-sobrante):0;
 
-  // ── Update sidebar display
+  // ── Display
   setText('r-facturado','RD$'+fmtD(totPrevD));
   setText('r-real','RD$'+fmtD(totRealD));
   setText('r-efectivo','RD$'+fmtD(efectivo));
@@ -957,7 +948,6 @@ function recalcResumen(){
     }
   }
 
-  // Save gastos
   cuadreLocal.gastos={ayudante,combustible,peaje,otros,anterior,cargadas,sobrante,efectivo,creditos};
   renderZonaResumen();
   renderPagoSummary();
@@ -1036,29 +1026,33 @@ function renderPagoSummary(){
 /* ── RESUMEN POR ZONA ── */
 function renderZonaResumen(){
   const items=getItemsCam(activeCamId);
-  if(!items.length&&!(cuadreLocal.extras||[]).length){document.getElementById('zona-resumen').textContent='—';return;}
+  const extras=cuadreLocal.extras||[];
+  if(!items.length&&!extras.length){
+    document.getElementById('zona-resumen').textContent='—';return;
+  }
 
-  // Group by zona (declare first so extras can use it too)
   const zonas={};
-  // Add extras to zona grouping
-  (cuadreLocal.extras||[]).forEach((ex,i)=>{
-    const z=ex.zona||'Extra';
+  const addZona=(z,prevV,prevP,prevD,realV,realP,realD)=>{
     if(!zonas[z]) zonas[z]={prevV:0,prevP:0,prevD:0,realV:0,realP:0,realD:0};
-    zonas[z].realV+=ex.cajas; zonas[z].realP+=ex.promo; zonas[z].realD+=ex.cajas*ex.precio;
-  });
+    zonas[z].prevV+=prevV; zonas[z].prevP+=prevP; zonas[z].prevD+=prevD;
+    zonas[z].realV+=realV; zonas[z].realP+=realP; zonas[z].realD+=realD;
+  };
+
   items.forEach((x,i)=>{
     const z=x.zona||'Sin zona';
-    if(!zonas[z]) zonas[z]={prevV:0,prevP:0,prevD:0,realV:0,realP:0,realD:0};
     const ci=cuadreLocal['c'+i]||{};
     const rV=ci.realCajas!==undefined?ci.realCajas:x.p.cajas;
     const rP=ci.realProm!==undefined?ci.realProm:x.p.promo;
-    const rD=rV*x.p.precio;
-    zonas[z].prevV+=x.p.cajas;
-    zonas[z].prevP+=x.p.promo;
-    zonas[z].prevD+=x.p.total;
-    zonas[z].realV+=rV;
-    zonas[z].realP+=rP;
-    zonas[z].realD+=rD;
+    const rD_calc=rV*x.p.precio;
+    const rD=ci.cobrado!==undefined&&ci.cobrado!==''?+ci.cobrado:rD_calc;
+    addZona(z, x.p.cajas, x.p.promo, x.p.total, rV, rP, rD);
+  });
+
+  extras.forEach(ex=>{
+    const z=ex.zona||'Extra';
+    const rD_calc=ex.cajas*ex.precio;
+    const rD=ex.cobrado!==undefined&&ex.cobrado!==''?+ex.cobrado:rD_calc;
+    addZona(z, 0, 0, 0, ex.cajas, ex.promo, rD);
   });
 
   const names=Object.keys(zonas).sort();
@@ -1070,7 +1064,7 @@ function renderZonaResumen(){
     totRealV+=d.realV; totRealP+=d.realP; totRealD+=d.realD;
     const totR=d.realV+d.realP;
     const prom=totR>0?Math.round(d.realD/totR):0;
-    const promPrev=((d.prevV+d.prevP)>0)?Math.round(d.prevD/(d.prevV+d.prevP)):0;
+    const promPrev=(d.prevV+d.prevP)>0?Math.round(d.prevD/(d.prevV+d.prevP)):0;
     const promDiff=prom!==promPrev;
     return`<tr>
       <td>${esc(z)}</td>
@@ -1085,7 +1079,7 @@ function renderZonaResumen(){
   const promTot=totR>0?Math.round(totRealD/totR):0;
 
   document.getElementById('zona-resumen').innerHTML=`
-    <div style="font-size:11px;color:var(--muted);margin-bottom:6px">Real (Preventa) · Precio promedio = $ total ÷ (V+P)</div>
+    <div style="font-size:11px;color:var(--muted);margin-bottom:6px">Real (Preventa) · basado en cobrado real · Precio promedio = $ total ÷ (V+P)</div>
     <table class="zona-table">
       <thead><tr>
         <th>Zona</th><th>Vendidas V</th><th>Promo P</th><th>Total $</th><th>$/cj prom</th>
