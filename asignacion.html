@@ -354,6 +354,20 @@ async function cargarDatos(){
 async function guardar(){
   try{
     limpiarJornadasViejas(binCache);
+    // Sync any allSubs changes back to binCache.jornadas.pedidos
+    Object.keys(allSubs).forEach(gk=>{
+      const s=allSubs[gk];
+      const fecha=s.jornadaPedido;
+      if(!fecha) return;
+      const sid=gk.slice(fecha.length+2);
+      if(!binCache.jornadas) binCache.jornadas={};
+      if(!binCache.jornadas[fecha]) binCache.jornadas[fecha]={pedidos:{},asignaciones:{},cuadres:{}};
+      // Only update pedidos if allSubs has more entries (manual additions)
+      const binPeds=binCache.jornadas[fecha].pedidos||{};
+      if(!binPeds[sid]||allSubs[gk].pedidos.length>(binPeds[sid].pedidos||[]).length){
+        binCache.jornadas[fecha].pedidos[sid]=s;
+      }
+    });
     // Write asignaciones back grouped by jornadaPedido
     // First clear all asignaciones in all jornadas
     if(binCache.jornadas){
@@ -699,8 +713,31 @@ async function agregarManual(){
   if(!zona) showToast('Sin zona — se agregará como Manual');
   const p={id:Date.now(),cliente:cli,cajas:caj,promo:pro,precio:pre,total:caj*pre,credito:false,ncf:false,rnc:'',nota:''};
   const ek=Object.keys(allSubs).find(k=>allSubs[k].zona===zona&&allSubs[k].vendedor===vend);
-  if(ek){allSubs[ek].pedidos.push(p);allSubs[ek].totalCajas+=caj;allSubs[ek].totalPromo+=pro;allSubs[ek].totalDinero+=p.total;}
-  else{const jornadaKey=hoy()+'__manual_'+Date.now();allSubs[jornadaKey]={id:jornadaKey,vendedor:vend,zona:zona||'Manual',fecha:new Date().toISOString().slice(0,10),enviado:new Date().toISOString(),pedidos:[p],totalCajas:caj,totalPromo:pro,totalDinero:p.total,asignado:false,jornadaPedido:hoy()};}
+  if(ek){
+    allSubs[ek].pedidos.push(p);
+    allSubs[ek].totalCajas+=caj;
+    allSubs[ek].totalPromo+=pro;
+    allSubs[ek].totalDinero+=p.total;
+    // Also update binCache directly so pedidos array is persisted
+    const ekFecha=allSubs[ek].jornadaPedido;
+    const ekSid=ek.slice(ekFecha.length+2);
+    if(binCache.jornadas&&binCache.jornadas[ekFecha]&&binCache.jornadas[ekFecha].pedidos&&binCache.jornadas[ekFecha].pedidos[ekSid]){
+      binCache.jornadas[ekFecha].pedidos[ekSid].pedidos.push(p);
+      binCache.jornadas[ekFecha].pedidos[ekSid].totalCajas+=caj;
+      binCache.jornadas[ekFecha].pedidos[ekSid].totalPromo+=pro;
+      binCache.jornadas[ekFecha].pedidos[ekSid].totalDinero+=p.total;
+    }
+  } else {
+    const jornadaKey=hoy()+'__manual_'+Date.now();
+    const newSub={id:jornadaKey,vendedor:vend,zona:zona||'Manual',fecha:new Date().toISOString().slice(0,10),enviado:new Date().toISOString(),pedidos:[p],totalCajas:caj,totalPromo:pro,totalDinero:p.total,asignado:false,jornadaPedido:hoy()};
+    allSubs[jornadaKey]=newSub;
+    // Also write to binCache
+    const newFecha=hoy();
+    const newSid='manual_'+Date.now();
+    if(!binCache.jornadas) binCache.jornadas={};
+    if(!binCache.jornadas[newFecha]) binCache.jornadas[newFecha]={pedidos:{},asignaciones:{},cuadres:{}};
+    binCache.jornadas[newFecha].pedidos[newSid]=newSub;
+  }
   await guardar();
   ['m-zona','m-vend','m-cli','m-caj','m-pro'].forEach(id=>{document.getElementById(id).value='';});
   renderPedidos();actualizarStats();showToast('Cliente agregado ✓');
