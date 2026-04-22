@@ -631,18 +631,24 @@ function renderDashboard(){
 
 function getItemsCam(camId){
   const items=[];
-  // Search across ALL jornadas for clients assigned to this camion for selected delivery date
   if(binCache.jornadas){
     Object.keys(binCache.jornadas).forEach(fecha=>{
       const j=binCache.jornadas[fecha];
       if(!j.pedidos||!j.asignaciones) return;
+      const asigKeys=Object.keys(j.asignaciones);
+      console.log(`Jornada ${fecha}: ${Object.keys(j.pedidos).length} pedidos, ${asigKeys.length} asignaciones`);
       Object.keys(j.pedidos).forEach(sid=>{
         const s=j.pedidos[sid];
         s.pedidos.forEach((p,i)=>{
-          const a=j.asignaciones[sid+'__'+i];
-          if(!a) return;
+          const key=sid+'__'+i;
+          const a=j.asignaciones[key];
+          if(!a){
+            console.log(`  NO asig for ${key}`);
+            return;
+          }
           const aCamId=a.camionId||a;
           const aFecha=a.fechaEntrega||fecha;
+          console.log(`  key=${key} camId=${aCamId} fecha=${aFecha} jornadaActiva=${jornadaActiva} match=${aCamId===camId && aFecha===jornadaActiva}`);
           if(aCamId===camId && aFecha===jornadaActiva){
             items.push({p, zona:s.zona, sid, pi:i, jornadaPedido:fecha});
           }
@@ -650,6 +656,7 @@ function getItemsCam(camId){
       });
     });
   }
+  console.log(`getItemsCam(${camId}) → ${items.length} items`);
   return items;
 }
 function getExtrasCam(camId){
