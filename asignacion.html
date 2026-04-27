@@ -241,53 +241,39 @@ font-family:monospace;pointer-events:none;user-select:none}
 
 <script>
 
-/* ── JSONBIN ── */
-const JKEY='$2a$10$q4eNs6WXxS3oXb25mIeINuoiZaCd69ruJI.IZhZGcstCRL4xDOPfu';
-const JBIN='69e249f336566621a8c3c97c';
-const JURL='https://api.jsonbin.io/v3/b/'+JBIN;
+/* ── API CONFIG ── */
+const API_URL = 'http://localhost:3000'; // Cambiar a URL de ngrok para acceso remoto
 
-async function leerBin(){
-  let r;
-  try{ r=await fetch(JURL+'/latest',{headers:{'X-Master-Key':JKEY}}); }
-  catch(e){ throw new Error('Sin conexión: '+e.message); }
-  if(r.status===401) throw new Error('API Key incorrecta (401)');
-  if(r.status===404) throw new Error('Bin ID no encontrado (404)');
+async function apiGet(path){
+  const r=await fetch(API_URL+path);
   if(!r.ok) throw new Error('Error HTTP '+r.status);
-  const j=await r.json();
-  if(!j.record) throw new Error('Bin vacío');
-  return j.record;
+  return r.json();
 }
-async function escribirBin(d){
-  const r=await fetch(JURL,{method:'PUT',
-    headers:{'Content-Type':'application/json','X-Master-Key':JKEY},
-    body:JSON.stringify(d)});
-  if(!r.ok) throw new Error('Error guardando: '+r.status);
+async function apiPost(path,body){
+  const r=await fetch(API_URL+path,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+  if(!r.ok) throw new Error('Error HTTP '+r.status);
+  return r.json();
+}
+async function apiPatch(path,body){
+  const r=await fetch(API_URL+path,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+  if(!r.ok) throw new Error('Error HTTP '+r.status);
+  return r.json();
+}
+async function apiDelete(path){
+  const r=await fetch(API_URL+path,{method:'DELETE'});
+  if(!r.ok) throw new Error('Error HTTP '+r.status);
+  return r.json();
 }
 
 /* ── JORNADA HELPERS ── */
 function hoy(){ const d=new Date(); const p=n=>String(n).padStart(2,'0'); return d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate()); }
 function fmtJornada(f){ if(!f)return'—'; const[y,m,d]=f.split('-'); const M=['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic']; return d+'/'+M[+m-1]+'/'+y; }
-function getJornada(bin,fecha){ return (bin.jornadas&&bin.jornadas[fecha])||{pedidos:{},asignaciones:{},cuadres:{}}; }
-function setJornada(bin,fecha,data){ if(!bin.jornadas) bin.jornadas={}; bin.jornadas[fecha]=data; }
-function listarJornadas(bin){ if(!bin.jornadas) return []; return Object.keys(bin.jornadas).sort().reverse(); }
-function limpiarJornadasViejas(bin,keepDays=45){
-  if(!bin.jornadas) return;
-  const cutoff=new Date(); cutoff.setDate(cutoff.getDate()-keepDays);
-  const cut=cutoff.toISOString().slice(0,10);
-  Object.keys(bin.jornadas).forEach(f=>{ if(f<cut) delete bin.jornadas[f]; });
-}
 
-/* ════════════════════════════════════════════════
-   NEW MODEL:
-   - subs  = ALL pending pedidos across ALL jornadas (flat, keyed by jornada+sid)
-   - asig  = { key: { camionId, fechaEntrega } }  ← now includes delivery date
-   - binCache = full bin record
-════════════════════════════════════════════════ */
+/* ── ESTADO ── */
 let allSubs = {};   // { 'YYYY-MM-DD__sid': { ...submission, jornadaPedido } }
-let asig    = {};   // { 'YYYY-MM-DD__sid__pi': { camionId, fechaEntrega } }
+let asig    = {};   // { 'YYYY-MM-DD__sid__pi': { camionId, fechaEntrega, _asignacionDbId } }
 let cams    = [];
-let binCache= {};
-let modalContext = null;  // { globalKey, pi, sid, jornadaPedido }
+let modalContext = null;
 
 /* ── INIT ── */
 window.addEventListener('DOMContentLoaded',()=>{
@@ -302,47 +288,63 @@ async function cargarDatos(){
   const btn=document.getElementById('btn-refresh');
   btn.textContent='⟳ ...';
   try{
-    binCache=await leerBin();
-    cams=(binCache.camiones&&binCache.camiones.length)?binCache.camiones:defaultCams();
-    // Rebuild flat allSubs from ALL jornadas
+    const [pedidosApi, camionesApi] = await Promise.all([
+      apiGet('/api/pedidos?para_asignacion=1'),
+      apiGet('/api/camiones'),
+    ]);
+
+    // Adaptar camiones al formato que usa la UI
+    cams = camionesApi.filter(c=>c.activo).map(c=>({
+      id:       String(c.id),
+      _dbId:    c.id,
+      nombre:   c.codigo + (c.nombre ? ' · '+c.nombre : ''),
+      chofer:   c.responsable || '—',
+      capacidad: c.capacidad_cajas || 0,
+    }));
+
+    // Construir allSubs y asig desde los pedidos planos
     allSubs={};
     asig={};
-    if(binCache.jornadas){
-      Object.keys(binCache.jornadas).forEach(fecha=>{
-        const j=binCache.jornadas[fecha];
-        if(j.pedidos){
-          Object.keys(j.pedidos).forEach(sid=>{
-            const gk=fecha+'__'+sid;
-            allSubs[gk]={...j.pedidos[sid], jornadaPedido:fecha};
-          });
-        }
-        if(j.asignaciones){
-          Object.keys(j.asignaciones).forEach(k=>{
-            const gk=fecha+'__'+k;
-            asig[gk]=j.asignaciones[k];
-          });
-        }
-      });
-    }
-    // Legacy format: pedidos at root level (before jornadas patch)
-    if(binCache.pedidos && Object.keys(binCache.pedidos).length>0){
-      const legacyFecha=hoy(); // treat legacy as today
-      Object.keys(binCache.pedidos).forEach(sid=>{
-        const gk=legacyFecha+'__'+sid;
-        if(!allSubs[gk]){ // don't overwrite if already in jornadas
-          allSubs[gk]={...binCache.pedidos[sid], jornadaPedido:legacyFecha};
-        }
-      });
-      if(binCache.asignaciones){
-        Object.keys(binCache.asignaciones).forEach(k=>{
-          const gk=legacyFecha+'__'+k;
-          if(!asig[gk]) asig[gk]=binCache.asignaciones[k];
-        });
+    pedidosApi.forEach(p=>{
+      const jornadaFecha = p.jornada_fecha;
+      const vendNorm = (p.preventa_nombre||'Manual').replace(/\s+/g,'_');
+      const zonaNorm = (p.zona_nombre||'Sin_Zona').replace(/\s+/g,'_');
+      const sid = vendNorm+'_'+zonaNorm;
+      const gk  = jornadaFecha+'__'+sid;
+
+      if(!allSubs[gk]){
+        allSubs[gk]={
+          id:sid, vendedor:p.preventa_nombre||'Manual', zona:p.zona_nombre||'Sin Zona',
+          fecha:jornadaFecha, enviado:jornadaFecha+'T00:00:00.000Z',
+          pedidos:[], totalCajas:0, totalPromo:0, totalDinero:0,
+          jornadaPedido:jornadaFecha,
+        };
       }
-    }
+      const sub=allSubs[gk];
+      const pi=sub.pedidos.length;
+      sub.pedidos.push({
+        _pedidoDbId:p.id, _asignacionDbId:p.asignacion_id||null,
+        id:p.id, cliente:p.cliente_nombre,
+        cajas:p.cajas_preventa, promo:p.promo_preventa||0,
+        precio:p.precio_unitario, total:p.total_preventa,
+        credito:!!p.tiene_credito, ncf:!!p.requiere_ncf,
+        rnc:p.rnc||'', nota:p.nota||'',
+      });
+      sub.totalCajas  += p.cajas_preventa||0;
+      sub.totalPromo  += p.promo_preventa||0;
+      sub.totalDinero += p.total_preventa||0;
+
+      // Si ya tiene asignación, poblar asig
+      if(p.asignacion_id && p.camion_id){
+        asig[gk+'__'+pi]={
+          camionId:String(p.camion_id),
+          fechaEntrega:p.fecha_entrega,
+          _asignacionDbId:p.asignacion_id,
+        };
+      }
+    });
   }catch(e){
-    showToast('Error: '+e.message); console.error(e);
-    if(!cams.length) cams=defaultCams();
+    showToast('Error cargando: '+e.message); console.error(e);
   }
   btn.textContent='⟳ Actualizar';
   renderAlertas();
@@ -350,47 +352,10 @@ async function cargarDatos(){
   actualizarStats();
 }
 
-/* ── GUARDAR ── */
-async function guardar(){
-  try{
-    limpiarJornadasViejas(binCache);
-    // Sync any allSubs changes back to binCache.jornadas.pedidos
-    Object.keys(allSubs).forEach(gk=>{
-      const s=allSubs[gk];
-      const fecha=s.jornadaPedido;
-      if(!fecha) return;
-      const sid=gk.slice(fecha.length+2);
-      if(!binCache.jornadas) binCache.jornadas={};
-      if(!binCache.jornadas[fecha]) binCache.jornadas[fecha]={pedidos:{},asignaciones:{},cuadres:{}};
-      // Only update pedidos if allSubs has more entries (manual additions)
-      const binPeds=binCache.jornadas[fecha].pedidos||{};
-      if(!binPeds[sid]||allSubs[gk].pedidos.length>(binPeds[sid].pedidos||[]).length){
-        binCache.jornadas[fecha].pedidos[sid]=s;
-      }
-    });
-    // Write asignaciones back grouped by jornadaPedido
-    // First clear all asignaciones in all jornadas
-    if(binCache.jornadas){
-      Object.keys(binCache.jornadas).forEach(f=>{
-        if(binCache.jornadas[f]) binCache.jornadas[f].asignaciones={};
-      });
-    }
-    // Write each asig entry to its jornada
-    Object.keys(asig).forEach(gk=>{
-      // gk = fecha__sid__pi
-      const parts=gk.split('__');
-      const fecha=parts[0];
-      const localKey=parts.slice(1).join('__'); // sid__pi
-      if(!binCache.jornadas) binCache.jornadas={};
-      if(!binCache.jornadas[fecha]) binCache.jornadas[fecha]={pedidos:{},asignaciones:{},cuadres:{}};
-      binCache.jornadas[fecha].asignaciones[localKey]=asig[gk];
-    });
-    binCache.camiones=cams;
-    await escribirBin(binCache);
-  }catch(e){showToast('Error al guardar: '+e.message);console.error(e);}
-}
-async function guardarCamiones(){ await guardar(); }
-async function guardarAsignaciones(){ await guardar(); }
+/* ── GUARDAR — las escrituras son inmediatas via API, este es no-op ── */
+async function guardar(){}
+async function guardarCamiones(){}
+async function guardarAsignaciones(){}
 
 /* ── ALERTAS DE JORNADAS ANTERIORES ── */
 function renderAlertas(){
@@ -634,13 +599,22 @@ function actualizarStats(){
 
 /* ── ASIGNAR TODOS (truck btn) ── */
 async function asignarTodos(gk,camId){
-  // Ask for delivery date
   const fechaEntrega=prompt('Fecha de entrega para esta ruta (YYYY-MM-DD):',hoy());
   if(!fechaEntrega) return;
-  allSubs[gk].pedidos.forEach((_,pi)=>{ asig[gk+'__'+pi]={camionId:camId,fechaEntrega}; });
-  await guardar();
+  const cam=cams.find(c=>c.id===String(camId));
+  if(!cam){showToast('Camión no encontrado');return;}
+  try{
+    for(let pi=0;pi<allSubs[gk].pedidos.length;pi++){
+      const key=gk+'__'+pi;
+      const p=allSubs[gk].pedidos[pi];
+      if(asig[key]?._asignacionDbId) await apiDelete('/api/asignaciones/'+asig[key]._asignacionDbId);
+      const result=await apiPost('/api/asignaciones',{pedido_id:p._pedidoDbId,camion_id:cam._dbId,fecha_entrega:fechaEntrega});
+      asig[key]={camionId:String(camId),fechaEntrega,_asignacionDbId:result.id};
+      p._asignacionDbId=result.id;
+    }
+  }catch(e){showToast('Error: '+e.message);console.error(e);return;}
   renderAlertas(); renderPedidos(); actualizarStats();
-  showToast(`${allSubs[gk].pedidos.length} clientes → ${cams.find(c=>c.id===camId)?.nombre} · ${fmtJornada(fechaEntrega)} ✓`);
+  showToast(`${allSubs[gk].pedidos.length} clientes → ${cam.nombre} · ${fmtJornada(fechaEntrega)} ✓`);
 }
 
 /* ── MODAL CLIENTE ── */
@@ -684,14 +658,23 @@ async function asignarCliente(camId){
   if(!modalContext) return;
   const {gk,pi}=modalContext;
   const key=gk+'__'+pi;
-  if(camId){
-    const fechaEl=document.getElementById('modal-fecha-entrega');
-    const fechaEntrega=fechaEl?fechaEl.value:hoy();
-    asig[key]={camionId:camId,fechaEntrega};
-  } else {
-    delete asig[key];
-  }
-  await guardar();
+  const p=allSubs[gk]?.pedidos[pi];
+  if(!p) return;
+  try{
+    if(camId){
+      const fechaEntrega=(document.getElementById('modal-fecha-entrega')?.value)||hoy();
+      const cam=cams.find(c=>c.id===String(camId));
+      if(!cam){showToast('Camión no encontrado');return;}
+      if(asig[key]?._asignacionDbId) await apiDelete('/api/asignaciones/'+asig[key]._asignacionDbId);
+      const result=await apiPost('/api/asignaciones',{pedido_id:p._pedidoDbId,camion_id:cam._dbId,fecha_entrega:fechaEntrega});
+      asig[key]={camionId:String(camId),fechaEntrega,_asignacionDbId:result.id};
+      p._asignacionDbId=result.id;
+    } else {
+      if(asig[key]?._asignacionDbId) await apiDelete('/api/asignaciones/'+asig[key]._asignacionDbId);
+      delete asig[key];
+      p._asignacionDbId=null;
+    }
+  }catch(e){showToast('Error: '+e.message);console.error(e);cerrarModal();return;}
   cerrarModal();
   renderAlertas(); renderPedidos(); actualizarStats();
   showToast(camId?'Asignado ✓':'Quitado de camión');
@@ -710,37 +693,15 @@ async function agregarManual(){
   const pre=parseInt(document.getElementById('m-pre').value)||0;
   if(!cli){showToast('Escribe el nombre del cliente');return;}
   if(!caj&&!pro){showToast('Ingresa cajas o promoción');return;}
-  if(!zona) showToast('Sin zona — se agregará como Manual');
-  const p={id:Date.now(),cliente:cli,cajas:caj,promo:pro,precio:pre,total:caj*pre,credito:false,ncf:false,rnc:'',nota:''};
-  const ek=Object.keys(allSubs).find(k=>allSubs[k].zona===zona&&allSubs[k].vendedor===vend);
-  if(ek){
-    allSubs[ek].pedidos.push(p);
-    allSubs[ek].totalCajas+=caj;
-    allSubs[ek].totalPromo+=pro;
-    allSubs[ek].totalDinero+=p.total;
-    // Also update binCache directly so pedidos array is persisted
-    const ekFecha=allSubs[ek].jornadaPedido;
-    const ekSid=ek.slice(ekFecha.length+2);
-    if(binCache.jornadas&&binCache.jornadas[ekFecha]&&binCache.jornadas[ekFecha].pedidos&&binCache.jornadas[ekFecha].pedidos[ekSid]){
-      binCache.jornadas[ekFecha].pedidos[ekSid].pedidos.push(p);
-      binCache.jornadas[ekFecha].pedidos[ekSid].totalCajas+=caj;
-      binCache.jornadas[ekFecha].pedidos[ekSid].totalPromo+=pro;
-      binCache.jornadas[ekFecha].pedidos[ekSid].totalDinero+=p.total;
-    }
-  } else {
-    const jornadaKey=hoy()+'__manual_'+Date.now();
-    const newSub={id:jornadaKey,vendedor:vend,zona:zona||'Manual',fecha:new Date().toISOString().slice(0,10),enviado:new Date().toISOString(),pedidos:[p],totalCajas:caj,totalPromo:pro,totalDinero:p.total,asignado:false,jornadaPedido:hoy()};
-    allSubs[jornadaKey]=newSub;
-    // Also write to binCache
-    const newFecha=hoy();
-    const newSid='manual_'+Date.now();
-    if(!binCache.jornadas) binCache.jornadas={};
-    if(!binCache.jornadas[newFecha]) binCache.jornadas[newFecha]={pedidos:{},asignaciones:{},cuadres:{}};
-    binCache.jornadas[newFecha].pedidos[newSid]=newSub;
-  }
-  await guardar();
-  ['m-zona','m-vend','m-cli','m-caj','m-pro'].forEach(id=>{document.getElementById(id).value='';});
-  renderPedidos();actualizarStats();showToast('Cliente agregado ✓');
+  try{
+    await apiPost('/api/pedidos/submit-preventa',{
+      vendedor:vend, zona:zona||'Manual', fecha:hoy(),
+      pedidos:[{cliente:cli,cajas:caj,promo:pro,precio:pre,total:caj*pre,credito:false,ncf:false,rnc:'',nota:''}],
+    });
+    ['m-zona','m-vend','m-cli','m-caj','m-pro'].forEach(id=>{document.getElementById(id).value='';});
+    await cargarDatos();
+    showToast('Cliente agregado ✓');
+  }catch(e){showToast('Error: '+e.message);}
 }
 
 /* ── CAMIONES CONFIG ── */
@@ -781,16 +742,34 @@ function renderCamConfig(){
 
 function toggleCam(id){document.getElementById(id)?.classList.toggle('open');}
 
-async function updCam(i,f,v){cams[i][f]=v;await guardar();renderCamConfig();renderPedidos();}
+async function updCam(i,f,v){
+  cams[i][f]=v;
+  const patch={};
+  if(f==='nombre') patch.nombre=v;
+  if(f==='chofer') patch.responsable=v;
+  if(f==='capacidad') patch.capacidad_cajas=v;
+  try{ await apiPatch('/api/camiones/'+cams[i]._dbId,patch); }catch(e){showToast('Error: '+e.message);}
+  renderCamConfig();renderPedidos();
+}
 async function agregarCamion(){
-  cams.push({id:'c'+Date.now(),nombre:'Camión '+(cams.length+1),chofer:'Chofer '+(cams.length+1),capacidad:0});
-  await guardar();renderCamConfig();renderPedidos();
+  const num=cams.length+1;
+  const codigo='VVL'+String(num).padStart(2,'0');
+  try{
+    const result=await apiPost('/api/camiones',{codigo,nombre:'Camión '+num,responsable:'Chofer '+num,capacidad_cajas:0});
+    cams.push({id:String(result.id),_dbId:result.id,nombre:codigo+' · Camión '+num,chofer:'Chofer '+num,capacidad:0});
+    renderCamConfig();renderPedidos();showToast('Camión agregado ✓');
+  }catch(e){showToast('Error: '+e.message);}
 }
 async function elimCam(i){
   if(!confirm('¿Eliminar '+cams[i].nombre+'?'))return;
-  const cid=cams[i].id;cams.splice(i,1);
-  Object.keys(asig).forEach(k=>{if(asig[k]===cid)delete asig[k];});
-  await guardar();renderCamConfig();renderCamDetalle();renderPedidos();actualizarStats();
+  const cid=cams[i].id;
+  try{
+    await apiPatch('/api/camiones/'+cams[i]._dbId,{activo:0});
+    cams.splice(i,1);
+    Object.keys(asig).forEach(k=>{if(asig[k].camionId===cid)delete asig[k];});
+    renderCamConfig();renderCamDetalle();renderPedidos();actualizarStats();
+    showToast('Camión eliminado ✓');
+  }catch(e){showToast('Error: '+e.message);}
 }
 
 /* ── CAMIONES DETALLE ── */
@@ -846,7 +825,13 @@ function renderCamDetalle(){
 }
 
 async function quitarCli(gk,i){
-  delete asig[gk+'__'+i];await guardar();
+  const key=gk+'__'+i;
+  const p=allSubs[gk]?.pedidos[i];
+  try{
+    if(asig[key]?._asignacionDbId) await apiDelete('/api/asignaciones/'+asig[key]._asignacionDbId);
+    delete asig[key];
+    if(p) p._asignacionDbId=null;
+  }catch(e){showToast('Error: '+e.message);return;}
   renderCamDetalle();renderCamConfig();renderPedidos();actualizarStats();
   showToast('Cliente quitado del camión');
 }
@@ -905,18 +890,17 @@ async function eliminarPreventa(gk){
   const s=allSubs[gk];
   if(!s) return;
   const hasAsig=s.pedidos.some((_,pi)=>asig[gk+'__'+pi]);
-  const msg=hasAsig
-    ?'Esta ruta tiene clientes asignados. ¿Eliminar de todas formas?'
-    :'¿Eliminar esta ruta sin asignar?';
+  const msg=hasAsig?'Esta ruta tiene clientes asignados. ¿Eliminar de todas formas?':'¿Eliminar esta ruta sin asignar?';
   if(!confirm(msg)) return;
-  Object.keys(asig).forEach(k=>{ if(k.startsWith(gk+'__')) delete asig[k]; });
-  delete allSubs[gk];
-  const fecha=s.jornadaPedido;
-  if(binCache.jornadas&&binCache.jornadas[fecha]&&binCache.jornadas[fecha].pedidos){
-    const sid=gk.slice(fecha.length+2);
-    delete binCache.jornadas[fecha].pedidos[sid];
-  }
-  await guardar();
+  try{
+    for(let pi=0;pi<s.pedidos.length;pi++){
+      const key=gk+'__'+pi;
+      if(asig[key]?._asignacionDbId) await apiDelete('/api/asignaciones/'+asig[key]._asignacionDbId);
+      delete asig[key];
+      if(s.pedidos[pi]._pedidoDbId) await apiPatch('/api/pedidos/'+s.pedidos[pi]._pedidoDbId,{estado:'cancelado'});
+    }
+    delete allSubs[gk];
+  }catch(e){showToast('Error: '+e.message);return;}
   renderAlertas(); renderPedidos(); actualizarStats();
   showToast('Ruta eliminada ✓');
 }
@@ -939,23 +923,15 @@ function fechaHoy(){
 }
 
 async function finalizarAsignaciones(){
-  // Generate assignment IDs for each camion that has clients
   const fecha = fechaHoy();
   let alguno = false;
   cams.forEach(cam=>{
-    const items=[];
-    Object.keys(allSubs).forEach(gk=>{
-      allSubs[gk].pedidos.forEach((p,i)=>{const _a=asig[gk+'__'+i];if(_a&&(_a.camionId===cam.id||_a===cam.id))items.push(true);});
-    });
-    if(items.length){
-      cam.asignacionId = generarNumAsig(cam.nombre, fecha);
-      cam.fechaAsignacion = fecha;
-      cam.fechaAsignacion = fecha;
-      alguno = true;
-    }
+    const tiene=Object.keys(allSubs).some(gk=>
+      allSubs[gk].pedidos.some((_,i)=>asig[gk+'__'+i]?.camionId===cam.id)
+    );
+    if(tiene){ cam.asignacionId=generarNumAsig(cam.nombre,fecha); cam.fechaAsignacion=fecha; alguno=true; }
   });
   if(!alguno){showToast('No hay clientes asignados aún');return;}
-  await guardar();
   genResumenGen();
   showToast('Asignaciones finalizadas ✓');
   document.getElementById('finalizados-info').style.display='block';
